@@ -1,33 +1,6 @@
 {
   "ahw_series": [
     {
-      "id": "s1",
-      "title": "The Mandela Catalogue",
-      "creator": "Alex Kister",
-      "year": 2021,
-      "platform": "YouTube",
-      "status": "Ongoing",
-      "tags": [
-        "Found Footage",
-        "Religious Horror",
-        "Alternate Beings",
-        "Broadcast"
-      ],
-      "description": "A found footage series set in an alternate version of Atticus County, Illinois, where demonic entities known as 'Alternates' replace humans and invade homes through television broadcasts.",
-      "notes": "",
-      "sourceUrl": "https://www.youtube.com/@AlexKister",
-      "rating": 9,
-      "episodeCount": "5+",
-      "contentWarnings": [
-        "Disturbing Imagery",
-        "Flashing Lights",
-        "Religious Themes"
-      ],
-      "relatedSeries": [],
-      "customFields": [],
-      "images": []
-    },
-    {
       "id": "s3",
       "title": "Local 58",
       "creator": "Kris Straub",
