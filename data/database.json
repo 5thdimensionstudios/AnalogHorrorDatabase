@@ -1,1 +1,135 @@
-{}
+{
+  "ahw_series": [
+    {
+      "id": "s1",
+      "title": "The Mandela Catalogue",
+      "creator": "Alex Kister",
+      "year": 2021,
+      "platform": "YouTube",
+      "status": "Ongoing",
+      "tags": [
+        "Found Footage",
+        "Religious Horror",
+        "Alternate Beings",
+        "Broadcast"
+      ],
+      "description": "A found footage series set in an alternate version of Atticus County, Illinois, where demonic entities known as 'Alternates' replace humans and invade homes through television broadcasts.",
+      "notes": "",
+      "sourceUrl": "https://www.youtube.com/@AlexKister",
+      "rating": 9,
+      "episodeCount": "5+",
+      "contentWarnings": [
+        "Disturbing Imagery",
+        "Flashing Lights",
+        "Religious Themes"
+      ],
+      "relatedSeries": [],
+      "customFields": [],
+      "images": []
+    },
+    {
+      "id": "s2",
+      "title": "The Walten Files",
+      "creator": "Martin Walls",
+      "year": 2020,
+      "platform": "YouTube",
+      "status": "Ongoing",
+      "tags": [
+        "VHS",
+        "Body Horror",
+        "Paranormal",
+        "Psychological"
+      ],
+      "description": "A found footage analog horror series set in the universe of Bon's Burgers, a fictional family entertainment restaurant from the 1970s. Follows the dark events surrounding the disappearance of the Walten family.",
+      "notes": "",
+      "sourceUrl": "",
+      "rating": 10,
+      "episodeCount": "5",
+      "contentWarnings": [
+        "Body Horror",
+        "Disturbing Imagery",
+        "Child Endangerment"
+      ],
+      "relatedSeries": [],
+      "customFields": [],
+      "images": []
+    },
+    {
+      "id": "s3",
+      "title": "Local 58",
+      "creator": "Kris Straub",
+      "year": 2017,
+      "platform": "YouTube",
+      "status": "Complete",
+      "tags": [
+        "Broadcast Horror",
+        "Cold War",
+        "Moon",
+        "Government"
+      ],
+      "description": "A series of unsettling fake television broadcasts from a fictional local TV station. Explores Cold War paranoia, lunar horror, and the eerie nature of late-night television.",
+      "notes": "",
+      "sourceUrl": "",
+      "rating": 9,
+      "episodeCount": "7",
+      "contentWarnings": [
+        "Disturbing Imagery",
+        "Suicide Themes"
+      ],
+      "relatedSeries": [],
+      "customFields": [],
+      "images": []
+    }
+  ],
+  "ahw_chars": [
+    {
+      "id": "c1",
+      "seriesId": "s2",
+      "name": "Bon",
+      "type": "Entity",
+      "status": "Active",
+      "aliases": "The Rabbit, Bon the Bunny",
+      "firstAppearance": "The Walten Files 1",
+      "image": null,
+      "images": [],
+      "summary": "The main animatronic rabbit mascot of Bon's Burgers. Possessed by an unknown force, Bon is the central threat of the series.",
+      "article": "Bon is the titular animatronic rabbit and primary antagonist of The Walten Files. Originally built as the mascot of Bon's Burgers, a family restaurant chain owned by Felix Kranken and Jack Walten, Bon became the vessel for something deeply wrong.\n\n== Appearance ==\nBon's design is that of a large anthropomorphic rabbit, predominantly white with black eyes and a wide, unsettling grin. The animatronic is capable of movement far beyond its normal parameters.\n\n== Role in the Series ==\nThroughout the series, Bon is shown pursuing employees and visitors to the abandoned restaurant. Its connection to the souls of the missing Walten family is heavily implied.\n\n== Reception ==\nBon is widely considered one of the most iconic figures in the analog horror genre.",
+      "voicedBy": "Martin Walls",
+      "customFields": []
+    },
+    {
+      "id": "c2",
+      "seriesId": "s2",
+      "name": "Jack Walten",
+      "type": "Character",
+      "status": "Deceased",
+      "aliases": "Jack",
+      "firstAppearance": "The Walten Files 1",
+      "image": null,
+      "images": [],
+      "summary": "Co-founder of Bon's Burgers. Disappeared along with his family under mysterious circumstances.",
+      "article": "Jack Walten was the co-founder and co-owner of Bon's Burgers. He founded the company alongside Felix Kranken in the early 1970s.\n\n== Disappearance ==\nHis disappearance, along with the rest of the Walten family, is the central mystery. VHS tapes depict Jack in home recordings and promotional material. His fate is slowly revealed across the series.",
+      "voicedBy": "Martin Walls",
+      "customFields": []
+    }
+  ],
+  "ahw_eps": [],
+  "ahw_settings": {
+    "bgAnimation": "static",
+    "accentColor": "#ff2222",
+    "accentGlow": true,
+    "bgColor": "#060608",
+    "scanlines": true,
+    "scanlineOpacity": 0.06,
+    "staticNoise": true,
+    "staticIntensity": 0.3,
+    "vignette": true,
+    "matrixSpeed": 40,
+    "matrixDensity": 16,
+    "matrixChar": "katakana",
+    "vhsIntensity": 0.6,
+    "phosphorColor": "#00ff41",
+    "displayFont": "VT323",
+    "bodyFont": "ShareTechMono"
+  }
+}
