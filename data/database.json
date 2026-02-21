@@ -1,32 +1,5 @@
 {
-  "ahw_series": [
-    {
-      "id": "s3",
-      "title": "Local 58",
-      "creator": "Kris Straub",
-      "year": 2017,
-      "platform": "YouTube",
-      "status": "Complete",
-      "tags": [
-        "Broadcast Horror",
-        "Cold War",
-        "Moon",
-        "Government"
-      ],
-      "description": "A series of unsettling fake television broadcasts from a fictional local TV station. Explores Cold War paranoia, lunar horror, and the eerie nature of late-night television.",
-      "notes": "",
-      "sourceUrl": "",
-      "rating": 9,
-      "episodeCount": "7",
-      "contentWarnings": [
-        "Disturbing Imagery",
-        "Suicide Themes"
-      ],
-      "relatedSeries": [],
-      "customFields": [],
-      "images": []
-    }
-  ],
+  "ahw_series": [],
   "ahw_chars": [
     {
       "id": "c1",
