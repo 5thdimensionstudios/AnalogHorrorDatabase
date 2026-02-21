@@ -1,10 +1,3 @@
-// netlify/functions/data.js
-// Reads and writes a JSON database stored in your GitHub repo.
-// Environment variables required in Netlify:
-//   GITHUB_TOKEN   — personal access token with "repo" scope
-//   REPO_OWNER     — your GitHub username
-//   REPO_NAME      — your repo name (e.g. "netlify-site")
-//   DB_FILE_PATH   — path in repo to the DB file (e.g. "data/database.json")
 
 const OWNER = process.env.REPO_OWNER;
 const REPO  = process.env.REPO_NAME;
