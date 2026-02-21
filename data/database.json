@@ -28,33 +28,6 @@
       "images": []
     },
     {
-      "id": "s2",
-      "title": "The Walten Files",
-      "creator": "Martin Walls",
-      "year": 2020,
-      "platform": "YouTube",
-      "status": "Ongoing",
-      "tags": [
-        "VHS",
-        "Body Horror",
-        "Paranormal",
-        "Psychological"
-      ],
-      "description": "A found footage analog horror series set in the universe of Bon's Burgers, a fictional family entertainment restaurant from the 1970s. Follows the dark events surrounding the disappearance of the Walten family.",
-      "notes": "",
-      "sourceUrl": "",
-      "rating": 10,
-      "episodeCount": "5",
-      "contentWarnings": [
-        "Body Horror",
-        "Disturbing Imagery",
-        "Child Endangerment"
-      ],
-      "relatedSeries": [],
-      "customFields": [],
-      "images": []
-    },
-    {
       "id": "s3",
       "title": "Local 58",
       "creator": "Kris Straub",
@@ -84,7 +57,7 @@
   "ahw_chars": [
     {
       "id": "c1",
-      "seriesId": "s2",
+      "seriesId": "",
       "name": "Bon",
       "type": "Entity",
       "status": "Active",
@@ -99,7 +72,7 @@
     },
     {
       "id": "c2",
-      "seriesId": "s2",
+      "seriesId": "",
       "name": "Jack Walten",
       "type": "Character",
       "status": "Deceased",
