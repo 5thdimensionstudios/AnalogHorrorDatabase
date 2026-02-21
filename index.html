@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analog Horror Community Archive</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>*{box-sizing:border-box;margin:0;padding:0;}body{background:#060608;}</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback } = React;
+
+
+// ═══════════ CHANGE THIS PASSWORD BEFORE DEPLOYING ═══════════════
+const ADMIN_PASS = "analog-admin-2024";
+// ═════════════════════════════════════════════════════════════════
+
+// ── SEED DATA ─────────────────────────────────────────────────────
+const SEED_SERIES = [
+  { id:"s1", title:"The Mandela Catalogue", creator:"Alex Kister", year:2021, platform:"YouTube", status:"Ongoing", tags:["Found Footage","Religious Horror","Alternate Beings","Broadcast"], description:"A found footage series set in an alternate version of Atticus County, Illinois, where demonic entities known as 'Alternates' replace humans and invade homes through television broadcasts.", notes:"", sourceUrl:"https://www.youtube.com/@AlexKister", rating:9, episodeCount:"5+", contentWarnings:["Disturbing Imagery","Flashing Lights","Religious Themes"], relatedSeries:[], customFields:[], images:[] },
+  { id:"s2", title:"The Walten Files", creator:"Martin Walls", year:2020, platform:"YouTube", status:"Ongoing", tags:["VHS","Body Horror","Paranormal","Psychological"], description:"A found footage analog horror series set in the universe of Bon's Burgers, a fictional family entertainment restaurant from the 1970s. Follows the dark events surrounding the disappearance of the Walten family.", notes:"", sourceUrl:"", rating:10, episodeCount:"5", contentWarnings:["Body Horror","Disturbing Imagery","Child Endangerment"], relatedSeries:[], customFields:[], images:[] },
+  { id:"s3", title:"Local 58", creator:"Kris Straub", year:2017, platform:"YouTube", status:"Complete", tags:["Broadcast Horror","Cold War","Moon","Government"], description:"A series of unsettling fake television broadcasts from a fictional local TV station. Explores Cold War paranoia, lunar horror, and the eerie nature of late-night television.", notes:"", sourceUrl:"", rating:9, episodeCount:"7", contentWarnings:["Disturbing Imagery","Suicide Themes"], relatedSeries:[], customFields:[], images:[] },
+];
+const SEED_CHARS = [
+  { id:"c1", seriesId:"s2", name:"Bon", type:"Entity", status:"Active", aliases:"The Rabbit, Bon the Bunny", firstAppearance:"The Walten Files 1", image:null, images:[], summary:"The main animatronic rabbit mascot of Bon's Burgers. Possessed by an unknown force, Bon is the central threat of the series.", article:"Bon is the titular animatronic rabbit and primary antagonist of The Walten Files. Originally built as the mascot of Bon's Burgers, a family restaurant chain owned by Felix Kranken and Jack Walten, Bon became the vessel for something deeply wrong.\n\n== Appearance ==\nBon's design is that of a large anthropomorphic rabbit, predominantly white with black eyes and a wide, unsettling grin. The animatronic is capable of movement far beyond its normal parameters.\n\n== Role in the Series ==\nThroughout the series, Bon is shown pursuing employees and visitors to the abandoned restaurant. Its connection to the souls of the missing Walten family is heavily implied.\n\n== Reception ==\nBon is widely considered one of the most iconic figures in the analog horror genre.", voicedBy:"Martin Walls", customFields:[] },
+  { id:"c2", seriesId:"s2", name:"Jack Walten", type:"Character", status:"Deceased", aliases:"Jack", firstAppearance:"The Walten Files 1", image:null, images:[], summary:"Co-founder of Bon's Burgers. Disappeared along with his family under mysterious circumstances.", article:"Jack Walten was the co-founder and co-owner of Bon's Burgers. He founded the company alongside Felix Kranken in the early 1970s.\n\n== Disappearance ==\nHis disappearance, along with the rest of the Walten family, is the central mystery. VHS tapes depict Jack in home recordings and promotional material. His fate is slowly revealed across the series.", voicedBy:"Martin Walls", customFields:[] },
+];
+const SEED_EPS = [];
+const DEF = { bgAnimation:"static", accentColor:"#ff2222", accentGlow:true, bgColor:"#060608", scanlines:true, scanlineOpacity:0.06, staticNoise:true, staticIntensity:0.3, vignette:true, matrixSpeed:40, matrixDensity:16, matrixChar:"katakana", vhsIntensity:0.6, phosphorColor:"#00ff41", displayFont:"VT323", bodyFont:"ShareTechMono" };
+
+// ── CONSTANTS ─────────────────────────────────────────────────────
+const S_CLR = { Ongoing:"#39ff14", Complete:"#4fc3f7", Hiatus:"#ffb300", Unknown:"#888", Cancelled:"#ff4444" };
+const C_CLR = { Active:"#39ff14", Deceased:"#ff4444", Unknown:"#888", Ambiguous:"#ffb300", Transformed:"#aa44ff", Corrupted:"#ff6600" };
+const RC_CLR = { Review:"var(--a)", "Inaccuracy Report":"#ff8800", Question:"#4fc3f7", Theory:"#aa44ff" };
+const TAGS = ["Found Footage","Broadcast","VHS","Cosmic Horror","Religious Horror","Government","Cold War","Nature","Alternate Beings","Moon","ARG","Psychological","Body Horror","Lovecraftian","Retro","Paranormal","Educational","Music","Short Film","Series","Internet","SCP-Adjacent","Creepypasta","Liminal Spaces","Backrooms","Dreams","Surveillance","Military","Alien","Cult","Possession","Time Loop","Reality Bending","Children's Show","Fake Documentary"];
+const CWS = ["Disturbing Imagery","Flashing Lights","Loud Audio","Jumpscares","Religious Themes","Suicide Themes","Violence","Body Horror","Cosmic Dread","Child Endangerment","Animal Harm"];
+const PLATS = ["YouTube","Vimeo","Twitter/X","Website","Archive.org","Multiple","Other"];
+const SS = ["Ongoing","Complete","Hiatus","Unknown","Cancelled"];
+const CT = ["Character","Entity","Mascot","Animatronic","Object","Location","Concept","Creature","Unknown"];
+const CS = ["Active","Deceased","Unknown","Ambiguous","Transformed","Corrupted"];
+const RT = ["Review","Inaccuracy Report","Question","Theory"];
+const DF = [{ id:"VT323",label:"VT323",import:"VT323" },{ id:"Orbitron",label:"Orbitron",import:"Orbitron:wght@400;700" },{ id:"SpecialElite",label:"Special Elite",import:"Special+Elite" },{ id:"CourierPrime",label:"Courier Prime",import:"Courier+Prime:wght@400;700" }];
+const BF = [{ id:"ShareTechMono",label:"Share Tech Mono",import:"Share+Tech+Mono" },{ id:"IBMPlexMono",label:"IBM Plex Mono",import:"IBM+Plex+Mono" },{ id:"Inconsolata",label:"Inconsolata",import:"Inconsolata" }];
+const MX = { katakana:"アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン", binary:"01", hex:"0123456789ABCDEF", symbols:"!@#$%^&*()_+-=[]{}|;:,.<>?", mixed:"アイウエオ01AB!@#$%" };
+const AP = ["#ff2222","#ff6600","#ffcc00","#39ff14","#00ffcc","#00aaff","#aa44ff","#ff44aa","#ffffff"];
+const SLURS = ["nigger","nigga","faggot","kike","chink","spic","gook","wetback","tranny","retard"];
+
+// ── MODERATION ────────────────────────────────────────────────────
+function moderate(raw) {
+  const t=String(raw||"").replace(/<[^>]*>/g,"").replace(/&[a-z#0-9]+;/gi," ").trim();
+  if(t.length<5) return {ok:false,msg:"Too short — minimum 5 characters."};
+  if(t.length>1000) return {ok:false,msg:"Too long — maximum 1000 characters."};
+  const lo=t.toLowerCase();
+  for(const w of SLURS) if(lo.includes(w)) return {ok:false,msg:"Contains prohibited language."};
+  if((t.match(/https?:\/\//gi)||[]).length>3) return {ok:false,msg:"Too many links — max 3 URLs."};
+  const letters=t.replace(/[^a-zA-Z]/g,"");
+  if(letters.length>20&&t.replace(/[^A-Z]/g,"").length/letters.length>0.75) return {ok:false,msg:"Please avoid excessive CAPS."};
+  const words=t.trim().split(/\s+/);
+  if(words.length>6&&new Set(lo.split(/\s+/)).size/words.length<0.25) return {ok:false,msg:"Looks like spam."};
+  return {ok:true,text:t.slice(0,1000)};
+}
+
+// ── STORAGE ───────────────────────────────────────────────────────
+async function sGet(k,sh=false){try{if(window.storage){const r=await window.storage.get(k,sh);return r?JSON.parse(r.value):null;}return JSON.parse(localStorage.getItem((sh?"sh:":"")+k))||null;}catch{return null;}}
+async function sSet(k,v,sh=false){try{const s=JSON.stringify(v);if(window.storage)await window.storage.set(k,s,sh);else localStorage.setItem((sh?"sh:":"")+k,s);}catch{}}
+function ssGet(k){try{return JSON.parse(sessionStorage.getItem(k)||"null");}catch{return null;}}
+function ssSet(k,v){try{sessionStorage.setItem(k,JSON.stringify(v));}catch{}}
+function hasReviewed(id){return(ssGet("ahw_rev")||[]).includes(id);}
+function markReviewed(id){ssSet("ahw_rev",[...new Set([...(ssGet("ahw_rev")||[]),id])]);}
+function hasRated(id){return(ssGet("ahw_rated")||[]).includes(id);}
+function markRated(id){ssSet("ahw_rated",[...new Set([...(ssGet("ahw_rated")||[]),id])]);}
+
+// ── TOASTS ────────────────────────────────────────────────────────
+function useToasts(){
+  const [toasts,setToasts]=useState([]);
+  const add=useCallback((msg,type="success")=>{const id=Date.now()+Math.random();setToasts(p=>[...p,{id,msg,type}]);setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),3600);},[]);
+  return [toasts,add];
+}
+function ToastBar({toasts}){return <div style={{position:"fixed",bottom:22,right:22,zIndex:9000,display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",pointerEvents:"none"}}>{toasts.map(t=><div key={t.id} className={`toast t-${t.type}`}>{t.msg}</div>)}</div>;}
+function useUnsaved(d){useEffect(()=>{if(!d)return;const h=(e)=>{e.preventDefault();e.returnValue="Unsaved changes.";return e.returnValue;};window.addEventListener("beforeunload",h);return()=>window.removeEventListener("beforeunload",h);},[d]);}
+
+// ── ARTICLE RENDERER ──────────────────────────────────────────────
+// Image tag syntax: [[img:IMAGE_ID|left|Caption]]  or |right| or |center|
+function renderArticle(text, images) {
+  if(!text) return null;
+  const imgs = images || [];
+  return text.split("\n\n").map((para, pi) => {
+    if(para.startsWith("== ") && para.endsWith(" =="))
+      return <h2 key={pi} id={"sec-"+pi} className="article-h2">{para.slice(3,-3)}</h2>;
+    const tagRe = /\[\[img:([^|\]]+)\|([^|\]]+)\|?([^\]]*)\]\]/g;
+    const hits = Array.from(para.matchAll(tagRe));
+    if(!hits.length) return <p key={pi} className="article-p">{para}</p>;
+    const floats = hits.map(m=>({
+      img: imgs.find(x=>x.id===m[1].trim()),
+      pos: (m[2]||"right").trim().toLowerCase(),
+      cap: (m[3]||"").trim(),
+    }));
+    const clean = para.replace(tagRe,"").trim();
+    const lefts  = floats.filter(f=>f.pos==="left");
+    const rights = floats.filter(f=>f.pos==="right");
+    const centers= floats.filter(f=>f.pos==="center");
+    return (
+      <div key={pi} className="article-block">
+        {lefts.map((f,i)=>f.img?<div key={"l"+i} className="wiki-img wiki-img-left"><img src={f.img.data} alt={f.cap}/>{f.cap&&<div className="wiki-img-cap">{f.cap}</div>}</div>:null)}
+        {rights.map((f,i)=>f.img?<div key={"r"+i} className="wiki-img wiki-img-right"><img src={f.img.data} alt={f.cap}/>{f.cap&&<div className="wiki-img-cap">{f.cap}</div>}</div>:null)}
+        {clean&&<p className="article-p" style={{overflow:"hidden"}}>{clean}</p>}
+        {centers.map((f,i)=>f.img?<div key={"c"+i} className="wiki-img wiki-img-center"><img src={f.img.data} alt={f.cap}/>{f.cap&&<div className="wiki-img-cap">{f.cap}</div>}</div>:null)}
+        <div style={{clear:"both"}}/>
+      </div>
+    );
+  });
+}
+
+// ── ARTICLE EDITOR ────────────────────────────────────────────────
+function ArticleEditor({value, onChange, images, placeholder}) {
+  const imgs = images || [];
+  const taRef = useRef(null);
+  const savedSel = useRef(null); // saved cursor position before textarea loses focus
+  const [selImg, setSelImg] = useState(null);
+  const [pos, setPos] = useState("right");
+  const [cap, setCap] = useState("");
+
+  // Save cursor whenever textarea selection changes or blurs
+  const saveSel = () => {
+    const ta = taRef.current;
+    if(ta) savedSel.current = { start: ta.selectionStart, end: ta.selectionEnd };
+  };
+
+  const pickImg = (img) => {
+    saveSel(); // save before thumbnail click steals focus
+    if(selImg && selImg.id===img.id) { setSelImg(null); return; }
+    setSelImg(img); setPos("right"); setCap("");
+  };
+
+  const insertTag = () => {
+    if(!selImg) return;
+    const tag = "[[img:"+selImg.id+"|"+pos+"|"+cap+"]]";
+    const cur = value || "";
+    // Use saved position if we have it, otherwise append
+    const sel = savedSel.current;
+    const s = sel ? sel.start : cur.length;
+    const e = sel ? sel.end   : cur.length;
+    const before = cur.slice(0, s);
+    const after  = cur.slice(e);
+    const gap = (before.length > 0 && !before.endsWith("\n\n")) ? "\n\n" : "";
+    const inserted = gap + tag + "\n\n";
+    const next = before + inserted + after;
+    onChange(next);
+    const newPos = (before + inserted).length;
+    // Restore focus and cursor
+    setTimeout(() => {
+      const ta = taRef.current;
+      if(ta) { ta.focus(); ta.setSelectionRange(newPos, newPos); }
+      savedSel.current = { start: newPos, end: newPos };
+    }, 10);
+    setSelImg(null);
+  };
+
+  return (
+    <div>
+      <p className="hint" style={{marginBottom:8,lineHeight:1.65}}>
+        Use <code style={{color:"var(--a)"}}>== Section Name ==</code> on its own line for headings. Blank lines separate paragraphs.
+        {imgs.length>0 && " · Click a thumbnail below to place an image in the article."}
+      </p>
+
+      {imgs.length>0 && (
+        <div className="ae-strip">
+          <div className="ae-strip-label">Article Images — click a thumbnail to place it:</div>
+          <div className="ae-strip-row">
+            {imgs.map(img=>(
+              <div key={img.id}
+                className={"ae-thumb"+(selImg&&selImg.id===img.id?" sel":"")}
+                onClick={()=>pickImg(img)}
+                title={img.name||"Image"}>
+                <img src={img.data} alt=""/>
+                {img.iscover && <span className="ae-star">★</span>}
+              </div>
+            ))}
+          </div>
+
+          {selImg && (
+            <div className="ae-cfg">
+              <img src={selImg.data} className="ae-cfg-prev" alt=""/>
+              <div className="ae-cfg-right">
+                <div className="fg" style={{marginBottom:8}}>
+                  <label>Float Position</label>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                    {[["left","◧ Float Left"],["right","◨ Float Right"],["center","⬛ Center"]].map(([p,l])=>(
+                      <button key={p} className={"tpick"+(pos===p?" on":"")}
+                        onMouseDown={e=>{e.preventDefault();saveSel();setPos(p);}}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="fg" style={{marginBottom:8}}>
+                  <label>Caption <span className="hint">(optional)</span></label>
+                  <input value={cap} onChange={e=>setCap(e.target.value)}
+                    placeholder="Caption text…"
+                    onKeyDown={e=>e.key==="Enter"&&insertTag()}/>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn primary sm"
+                    onMouseDown={e=>{e.preventDefault();saveSel();}}
+                    onClick={insertTag}>↓ Insert at Cursor</button>
+                  <button className="btn ghost sm"
+                    onMouseDown={e=>e.preventDefault()}
+                    onClick={()=>setSelImg(null)}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="fg">
+        <textarea
+          ref={taRef}
+          rows={imgs.length>0 ? 16 : 24}
+          value={value||""}
+          onChange={e=>onChange(e.target.value)}
+          onSelect={saveSel}
+          onBlur={saveSel}
+          onClick={saveSel}
+          onKeyUp={saveSel}
+          style={{fontSize:".78rem",lineHeight:1.85,fontFamily:"monospace"}}
+          placeholder={placeholder}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── BACKGROUND ────────────────────────────────────────────────────
+function MatrixRain({s}){
+  const ref=useRef(null),anim=useRef(null);
+  useEffect(()=>{
+    const c=ref.current;if(!c)return;const ctx=c.getContext("2d");
+    const resize=()=>{c.width=window.innerWidth;c.height=window.innerHeight;};resize();window.addEventListener("resize",resize);
+    const drops=[];const init=()=>{const cols=Math.floor(c.width/s.matrixDensity);drops.length=0;for(let i=0;i<cols;i++)drops.push(Math.random()*-(c.height/s.matrixDensity)*2);};init();
+    const chars=MX[s.matrixChar]||MX.katakana;
+    const hex=s.accentColor.replace("#","");const r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+    const bh=s.bgColor.replace("#","");const br=parseInt(bh.slice(0,2),16),bg=parseInt(bh.slice(2,4),16),bb=parseInt(bh.slice(4,6),16);
+    let last=0;
+    const draw=(ts)=>{anim.current=requestAnimationFrame(draw);if(ts-last<s.matrixSpeed)return;last=ts;ctx.fillStyle="rgba("+br+","+bg+","+bb+",0.05)";ctx.fillRect(0,0,c.width,c.height);ctx.font=s.matrixDensity+"px monospace";const nc=Math.floor(c.width/s.matrixDensity);for(let i=0;i<nc;i++){const y=drops[i]*s.matrixDensity;ctx.fillStyle="#fff";ctx.fillText(chars[Math.floor(Math.random()*chars.length)],i*s.matrixDensity,y);ctx.fillStyle="rgba("+r+","+g+","+b+",0.7)";for(let j=1;j<6;j++)ctx.fillText(chars[Math.floor(Math.random()*chars.length)],i*s.matrixDensity,y-j*s.matrixDensity);if(y>c.height&&Math.random()>0.975)drops[i]=0;drops[i]+=1;}};
+    anim.current=requestAnimationFrame(draw);
+    return()=>{cancelAnimationFrame(anim.current);window.removeEventListener("resize",resize);};
+  },[s.matrixSpeed,s.matrixDensity,s.matrixChar,s.accentColor,s.bgColor]);
+  return <canvas ref={ref} style={{position:"fixed",inset:0,zIndex:0,opacity:.5}}/>;
+}
+function PhosphorBg({s}){
+  const ref=useRef(null),anim=useRef(null);
+  useEffect(()=>{
+    const c=ref.current;if(!c)return;const ctx=c.getContext("2d");
+    const resize=()=>{c.width=window.innerWidth;c.height=window.innerHeight;};resize();window.addEventListener("resize",resize);
+    const col=s.phosphorColor.replace("#","");const r=parseInt(col.slice(0,2),16),g=parseInt(col.slice(2,4),16),b=parseInt(col.slice(4,6),16);
+    const pts=Array.from({length:80},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,size:Math.random()*3+1,a:Math.random()*.4+.05}));
+    const draw=()=>{anim.current=requestAnimationFrame(draw);ctx.clearRect(0,0,c.width,c.height);pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=c.width;if(p.x>c.width)p.x=0;if(p.y<0)p.y=c.height;if(p.y>c.height)p.y=0;const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.size*8);gr.addColorStop(0,"rgba("+r+","+g+","+b+","+p.a+")");gr.addColorStop(1,"rgba("+r+","+g+","+b+",0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(p.x,p.y,p.size*8,0,Math.PI*2);ctx.fill();});};
+    anim.current=requestAnimationFrame(draw);
+    return()=>{cancelAnimationFrame(anim.current);window.removeEventListener("resize",resize);};
+  },[s.phosphorColor]);
+  return <canvas ref={ref} style={{position:"fixed",inset:0,zIndex:0,opacity:.8}}/>;
+}
+function BgLayer({s}){return(<><div style={{position:"fixed",inset:0,zIndex:-1,background:s.bgColor}}/>{s.bgAnimation==="matrix"&&<MatrixRain s={s}/>}{s.bgAnimation==="phosphor"&&<PhosphorBg s={s}/>}{s.bgAnimation==="vhs"&&<div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none"}}><div className="vhs-lines"/><div className="vhs-bleed" style={{"--vc":s.accentColor}}/><div className="vhs-tracking" style={{"--vc":s.accentColor}}/></div>}{s.vignette&&<div className="vignette"/>}{s.scanlines&&<div className="scanlines" style={{"--slo":s.scanlineOpacity}}/>}{s.staticNoise&&s.bgAnimation!=="matrix"&&<div className="static-noise" style={{"--sto":s.staticIntensity*.4}}/>}</>);}
+
+// ── SETTINGS PANEL ────────────────────────────────────────────────
+function SettingsPanel({s,onChange,onClose}){
+  const [tab,setTab]=useState("bg");const set=(k,v)=>onChange({...s,[k]:v});
+  return(<div className="overlay" onClick={onClose}><div className="spanel" onClick={e=>e.stopPropagation()}>
+    <div className="spanel-hd"><span className="spanel-title">⚙ APPEARANCE</span><button className="btn ghost sm" onClick={onClose}>✕</button></div>
+    <div className="stabs">{["bg","colors","effects","fonts"].map(t=><button key={t} className={"stab"+(tab===t?" on":"")} onClick={()=>setTab(t)}>{t==="bg"?"Background":t==="colors"?"Colors":t==="effects"?"Effects":"Fonts"}</button>)}</div>
+    <div className="spanel-bd">
+      {tab==="bg"&&<div className="sg"><label className="sl">Mode</label><div className="anim-grid">{[["static","📺 Static"],["matrix","🔡 Matrix"],["vhs","📼 VHS"],["phosphor","🟢 Phosphor"],["minimal","⬛ Minimal"]].map(([id,l])=><button key={id} className={"anim-opt"+(s.bgAnimation===id?" on":"")} onClick={()=>set("bgAnimation",id)}>{l}</button>)}</div>
+        {s.bgAnimation==="matrix"&&<div className="sub-sg"><div className="sr"><div className="sg"><label className="sl">Speed <b>{s.matrixSpeed}ms</b></label><input type="range" min={10} max={120} value={s.matrixSpeed} onChange={e=>set("matrixSpeed",+e.target.value)}/></div><div className="sg"><label className="sl">Density <b>{s.matrixDensity}px</b></label><input type="range" min={8} max={32} value={s.matrixDensity} onChange={e=>set("matrixDensity",+e.target.value)}/></div></div><div className="sg"><label className="sl">Charset</label><select value={s.matrixChar} onChange={e=>set("matrixChar",e.target.value)}><option value="katakana">Katakana</option><option value="binary">Binary</option><option value="hex">Hex</option><option value="symbols">Symbols</option><option value="mixed">Mixed</option></select></div></div>}
+        {s.bgAnimation==="vhs"&&<div className="sub-sg"><div className="sg"><label className="sl">Intensity <b>{Math.round(s.vhsIntensity*100)}%</b></label><input type="range" min={0} max={1} step={.05} value={s.vhsIntensity} onChange={e=>set("vhsIntensity",+e.target.value)}/></div></div>}
+        {s.bgAnimation==="phosphor"&&<div className="sub-sg"><div className="sg"><label className="sl">Color</label><div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}><input type="color" value={s.phosphorColor} onChange={e=>set("phosphorColor",e.target.value)} style={{width:36,height:28}}/>{["#00ff41","#00ffcc","#39ff14","#fff","#4fc3f7"].map(c=><span key={c} onClick={()=>set("phosphorColor",c)} style={{width:18,height:18,borderRadius:"50%",background:c,cursor:"pointer",border:s.phosphorColor===c?"2px solid #fff":"2px solid transparent"}}/>)}</div></div></div>}
+      </div>}
+      {tab==="colors"&&<div className="sg"><div className="sg"><label className="sl">Accent</label><div style={{display:"flex",gap:8,alignItems:"center"}}><input type="color" value={s.accentColor} onChange={e=>set("accentColor",e.target.value)} style={{width:36,height:28}}/><span style={{fontSize:".68rem",color:"#555"}}>{s.accentColor}</span></div><div style={{display:"flex",gap:5,marginTop:6,flexWrap:"wrap"}}>{AP.map(c=><span key={c} onClick={()=>set("accentColor",c)} style={{width:22,height:22,background:c,cursor:"pointer",border:s.accentColor===c?"2px solid #fff":"2px solid #1f1f1f"}}/>)}</div></div><div className="sg"><label className="sl">Background</label><input type="color" value={s.bgColor} onChange={e=>set("bgColor",e.target.value)} style={{width:36,height:28}}/><div style={{display:"flex",gap:5,marginTop:6}}>{["#060608","#060005","#00060a","#030a00","#080808"].map(c=><span key={c} onClick={()=>set("bgColor",c)} style={{width:22,height:22,background:c,cursor:"pointer",border:s.bgColor===c?"2px solid #fff":"2px solid #1f1f1f"}}/>)}</div></div><label className="schk"><input type="checkbox" checked={s.accentGlow} onChange={e=>set("accentGlow",e.target.checked)}/> Glow</label></div>}
+      {tab==="effects"&&<div className="sg"><label className="schk"><input type="checkbox" checked={s.scanlines} onChange={e=>set("scanlines",e.target.checked)}/> Scanlines</label>{s.scanlines&&<div className="sg" style={{marginLeft:16}}><label className="sl">Opacity <b>{Math.round(s.scanlineOpacity*100)}%</b></label><input type="range" min={0} max={.25} step={.005} value={s.scanlineOpacity} onChange={e=>set("scanlineOpacity",+e.target.value)}/></div>}<label className="schk"><input type="checkbox" checked={s.staticNoise} onChange={e=>set("staticNoise",e.target.checked)}/> Static Noise</label>{s.staticNoise&&<div className="sg" style={{marginLeft:16}}><label className="sl">Intensity <b>{Math.round(s.staticIntensity*100)}%</b></label><input type="range" min={0} max={1} step={.05} value={s.staticIntensity} onChange={e=>set("staticIntensity",+e.target.value)}/></div>}<label className="schk"><input type="checkbox" checked={s.vignette} onChange={e=>set("vignette",e.target.checked)}/> Vignette</label></div>}
+      {tab==="fonts"&&<div className="sg"><div className="sg"><label className="sl">Display</label><div className="font-grid">{DF.map(f=><button key={f.id} className={"font-opt"+(s.displayFont===f.id?" on":"")} style={{fontFamily:"'"+f.label+"',monospace"}} onClick={()=>set("displayFont",f.id)}><span style={{fontSize:"1.2rem"}}>{f.label}</span><span style={{fontSize:".52rem",opacity:.3}}>HORROR</span></button>)}</div></div><div className="sg"><label className="sl">Body</label><div className="font-grid">{BF.map(f=><button key={f.id} className={"font-opt"+(s.bodyFont===f.id?" on":"")} style={{fontFamily:"'"+f.label+"',monospace"}} onClick={()=>set("bodyFont",f.id)}><span style={{fontSize:".85rem"}}>{f.label}</span><span style={{fontSize:".52rem",opacity:.3}}>Quick fox</span></button>)}</div></div></div>}
+    </div>
+  </div></div>);
+}
+
+// ── IMAGE UPLOADER ────────────────────────────────────────────────
+function ImgUploader({images,onChange}){
+  const ref=useRef(null);
+  const add=(files)=>Array.from(files).forEach(f=>{if(!f.type.startsWith("image/"))return;const r=new FileReader();r.onload=e=>onChange([...images,{id:"img"+Date.now()+Math.floor(Math.random()*1000),name:f.name,data:e.target.result,iscover:images.length===0}]);r.readAsDataURL(f);});
+  const remove=(id)=>{const f=images.filter(i=>i.id!==id);if(f.length&&!f.some(i=>i.iscover))f[0].iscover=true;onChange(f);};
+  const setCov=(id)=>onChange(images.map(i=>({...i,iscover:i.id===id})));
+  return(<div>
+    <div className="img-grid">
+      {images.map(img=>(
+        <div key={img.id} className={"img-item"+(img.iscover?" cover":"")}>
+          <img src={img.data} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.8}}/>
+          <div className="img-ov">
+            <button className="img-btn" onClick={()=>setCov(img.id)}>{img.iscover?"★ Cover":"☆ Set Cover"}</button>
+            <button className="img-btn del" onClick={()=>remove(img.id)}>✕ Remove</button>
+          </div>
+          {img.iscover&&<div className="cover-lbl">COVER</div>}
+        </div>
+      ))}
+      {images.length<8&&<div className="img-add" onClick={()=>ref.current&&ref.current.click()}>
+        <span style={{fontSize:"2rem",opacity:.2}}>+</span>
+        <span style={{fontSize:".6rem",color:"#555"}}>Upload Image</span>
+        <input ref={ref} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>add(e.target.files)}/>
+      </div>}
+    </div>
+    {images.length>0&&<p className="hint" style={{marginTop:7}}>★ = cover · max 8 images · hover to manage</p>}
+  </div>);
+}
+
+function Lightbox({src,onClose}){
+  useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
+  return <div className="overlay lbx" onClick={onClose}><div style={{maxWidth:"90vw",maxHeight:"90vh",position:"relative"}} onClick={e=>e.stopPropagation()}><img src={src} style={{maxWidth:"100%",maxHeight:"85vh",objectFit:"contain",display:"block"}}/><button className="btn ghost sm" style={{position:"absolute",top:-34,right:0}} onClick={onClose}>✕ CLOSE</button></div></div>;
+}
+
+// ── ADMIN LOGIN ───────────────────────────────────────────────────
+function AdminLogin({onLogin,onClose}){
+  const [pw,setPw]=useState(""),[err,setErr]=useState("");
+  const go=()=>{if(pw===ADMIN_PASS)onLogin();else{setErr("Incorrect password.");setPw("");}};
+  useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
+  return(<div className="overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
+    <h3>ADMIN LOGIN</h3><p>Enter the admin password to enable editing.</p>
+    <input type="password" value={pw} onChange={e=>{setPw(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="Admin password" autoFocus style={{marginTop:12,marginBottom:6}}/>
+    {err&&<p style={{color:"var(--red)",fontSize:".68rem",marginBottom:6}}>⚠ {err}</p>}
+    <div className="modal-btns"><button className="btn primary" onClick={go}>Login</button><button className="btn ghost" onClick={onClose}>Cancel</button></div>
+  </div></div>);
+}
+
+// ── COMMUNITY RATING ──────────────────────────────────────────────
+function CommunityRating({sid,toast}){
+  const [hover,setHover]=useState(0),[myR,setMyR]=useState(0),[agg,setAgg]=useState(null),[done,setDone]=useState(false),[loading,setLoading]=useState(true);
+  useEffect(()=>{(async()=>{const d=await sGet("ahw_r_"+sid,true);if(d)setAgg(d);if(hasRated(sid))setDone(true);setLoading(false);})();},[sid]);
+  const rate=async(n)=>{
+    if(done||loading)return;
+    const p=agg||{count:0,total:0};const u={count:p.count+1,total:p.total+n,avg:Math.round(((p.total+n)/(p.count+1))*10)/10};
+    setAgg(u);setMyR(n);setDone(true);markRated(sid);await sSet("ahw_r_"+sid,u,true);toast("Rating saved!","success");
+  };
+  if(loading)return null;
+  return(<div className="cb-block">
+    <div className="cb-title">Community Rating</div>
+    {agg&&agg.count>0?<div className="cb-avg">★ {agg.avg}<span className="cb-cnt"> / 5  ({agg.count} vote{agg.count!==1?"s":""})</span></div>:<div className="cb-avg" style={{color:"var(--td)",fontSize:"1rem"}}>No ratings yet!</div>}
+    {!done
+      ?<div><div className="hint" style={{marginBottom:5}}>Rate this series:</div><div className="cstar-row">{[1,2,3,4,5].map(n=><span key={n} className={"cstar"+((hover||myR)>=n?" lit":"")} onClick={()=>rate(n)} onMouseEnter={()=>setHover(n)} onMouseLeave={()=>setHover(0)}>★</span>)}</div></div>
+      :<div className="cb-thanks">{Array(myR||0).fill(0).map((_,i)=><span key={i} style={{color:"#ffcc44"}}>★</span>)}<span className="hint" style={{marginLeft:6}}>Rating submitted!</span></div>}
+  </div>);
+}
+
+// ── REVIEWS ───────────────────────────────────────────────────────
+function Reviews({sid,isAdmin,toast}){
+  const [revs,setRevs]=useState([]),[loading,setLoading]=useState(true),[text,setText]=useState(""),[type,setType]=useState("Review"),[sub,setSub]=useState(false),[err,setErr]=useState(""),[show,setShow]=useState(false);
+  const done=hasReviewed(sid);
+  useEffect(()=>{(async()=>{const d=await sGet("ahw_rv_"+sid,true);setRevs(d||[]);setLoading(false);})();},[sid]);
+  const submit=async()=>{
+    setErr("");const res=moderate(text);if(!res.ok){setErr(res.msg);return;}
+    if(done){setErr("Already submitted this session.");return;}
+    setSub(true);const ex=await sGet("ahw_rv_"+sid,true)||[];
+    if(ex.length>=100){setErr("Review limit reached.");setSub(false);return;}
+    const rev={id:Date.now().toString(36)+Math.random().toString(36).slice(2),text:res.text,type,ts:Date.now()};
+    const up=[rev,...ex];await sSet("ahw_rv_"+sid,up,true);markReviewed(sid);setRevs(up);setText("");setShow(false);toast("Feedback submitted!","success");setSub(false);
+  };
+  const del=async(id)=>{if(!isAdmin)return;const up=revs.filter(r=>r.id!==id);await sSet("ahw_rv_"+sid,up,true);setRevs(up);toast("Review removed.","info");};
+  const fmt=(ts)=>{try{return new Date(ts).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}catch{return "";}};
+  return(<div className="wiki-sec">
+    <div className="wiki-sec-hd">
+      <h2 className="wiki-h2">Community Feedback{revs.length>0?" ("+revs.length+")":""}</h2>
+      {!done&&!show&&<button className="btn primary sm" onClick={()=>setShow(true)}>+ Leave Feedback</button>}
+    </div>
+    {show&&<div className="rev-form">
+      <div className="fg"><label>Type</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{RT.map(t=><button key={t} className={"tpick"+(type===t?" on":"")} style={type===t?{borderColor:RC_CLR[t]||"var(--a)",color:RC_CLR[t]||"var(--a)"}:{}} onClick={()=>setType(t)}>{t}</button>)}</div></div>
+      <div className="fg"><label>Message <span className="hint">({text.length}/1000)</span></label><textarea rows={4} value={text} onChange={e=>{setText(e.target.value);setErr("");}} placeholder="Share thoughts, report inaccuracies, ask questions, or post theories…"/></div>
+      {err&&<p style={{color:"var(--red)",fontSize:".68rem",margin:"-8px 0 10px"}}>⚠ {err}</p>}
+      <p className="hint" style={{marginBottom:10}}>Civil discourse only. Slurs and spam are automatically blocked. One submission per session per series.</p>
+      <div style={{display:"flex",gap:8}}><button className="btn primary sm" onClick={submit} disabled={sub||text.length<5}>{sub?"Submitting…":"Submit"}</button><button className="btn ghost sm" onClick={()=>{setShow(false);setErr("");}}>Cancel</button></div>
+    </div>}
+    {done&&!show&&<p className="hint" style={{marginBottom:14}}>✓ Feedback submitted this session.</p>}
+    {loading?<p className="dim" style={{fontSize:".72rem"}}>Loading…</p>
+     :revs.length===0?<p className="dim" style={{fontSize:".72rem",fontStyle:"italic",padding:"8px 0"}}>No feedback yet — be the first!</p>
+     :<div className="revs-list">{revs.map(r=><div key={r.id} className="rev-item">
+        <div className="rev-hdr">
+          <span className="rev-type" style={{borderColor:RC_CLR[r.type]||"var(--a)",color:RC_CLR[r.type]||"var(--a)"}}>{r.type}</span>
+          <span className="rev-date">{fmt(r.ts)}</span>
+          {isAdmin&&<button className="btn danger" style={{fontSize:".52rem",padding:"1px 7px",marginLeft:"auto"}} onClick={()=>del(r.id)}>Remove</button>}
+        </div>
+        <p className="rev-text">{r.text}</p>
+      </div>)}</div>}
+  </div>);
+}
+
+// ── SERIES FORM ───────────────────────────────────────────────────
+function SeriesForm({series,allSeries,characters,onSave,onCancel,isNew,toast}){
+  const [d,setD]=useState({...series,tagsInput:(series.tags||[]).join(", "),images:series.images||[],contentWarnings:series.contentWarnings||[],relatedSeries:series.relatedSeries||[],customFields:series.customFields||[]});
+  const [tab,setTab]=useState("basic"),[dirty,setDirty]=useState(false);
+  useUnsaved(dirty);
+  const u=(k,v)=>{setD(p=>({...p,[k]:v}));setDirty(true);};
+  const togTag=t=>{const c=d.tagsInput.split(",").map(x=>x.trim()).filter(Boolean);u("tagsInput",(c.includes(t)?c.filter(x=>x!==t):[...c,t]).join(", "));};
+  const togCW=w=>{const c=d.contentWarnings;u("contentWarnings",c.includes(w)?c.filter(x=>x!==w):[...c,w]);};
+  const togRel=t=>{const c=d.relatedSeries;u("relatedSeries",c.includes(t)?c.filter(x=>x!==t):[...c,t]);};
+  const curTags=d.tagsInput.split(",").map(x=>x.trim()).filter(Boolean);
+  const sc=characters.filter(c=>c.seriesId===series.id);
+  const save=()=>{const tags=d.tagsInput.split(",").map(t=>t.trim()).filter(Boolean);onSave({...d,tags});setDirty(false);};
+  const TABS=[["basic","Basic"],["images","Images"],["content","Content"],["meta","Metadata"],["custom","Custom"]];
+  return(<div className="form-page">
+    <div className="crumb"><span onClick={onCancel} className="bc">Archive</span><span className="bcs">›</span><span>{isNew?"New Series":"Edit: "+series.title}</span></div>
+    {dirty&&<div className="unsaved-bar">● Unsaved changes</div>}
+    <h1 className="form-ttl">{isNew?"Add New Series":"Editing: "+series.title}</h1>
+    <div className="form-tabs">{TABS.map(([id,l])=><button key={id} className={"ftab"+(tab===id?" on":"")} onClick={()=>setTab(id)}>{l}</button>)}</div>
+    <div className="form-body">
+      {tab==="basic"&&<div>
+        <div className="fg"><label>Title *</label><input value={d.title} onChange={e=>u("title",e.target.value)} placeholder="Series title"/></div>
+        <div className="frow"><div className="fg"><label>Creator *</label><input value={d.creator} onChange={e=>u("creator",e.target.value)} placeholder="Creator"/></div><div className="fg"><label>Year</label><input type="number" value={d.year} onChange={e=>u("year",parseInt(e.target.value)||"")} placeholder="2021"/></div></div>
+        <div className="frow"><div className="fg"><label>Platform</label><select value={d.platform} onChange={e=>u("platform",e.target.value)}>{PLATS.map(p=><option key={p}>{p}</option>)}</select></div><div className="fg"><label>Status</label><select value={d.status} onChange={e=>u("status",e.target.value)}>{SS.map(s=><option key={s}>{s}</option>)}</select></div></div>
+        <div className="frow"><div className="fg"><label>Episodes</label><input value={d.episodeCount||""} onChange={e=>u("episodeCount",e.target.value)} placeholder="e.g. 12"/></div><div className="fg"><label>Source URL</label><input value={d.sourceUrl||""} onChange={e=>u("sourceUrl",e.target.value)} placeholder="https://..."/></div></div>
+        <div className="fg"><label>Admin Rating</label><div className="stars">{[1,2,3,4,5,6,7,8,9,10].map(n=><span key={n} className={"star"+((d.rating||0)>=n?" lit":"")} onClick={()=>u("rating",d.rating===n?null:n)}>★</span>)}{d.rating&&<span style={{fontSize:".62rem",color:"#555",marginLeft:8}}>{d.rating}/10 <span style={{color:"var(--a)",cursor:"pointer"}} onClick={()=>u("rating",null)}>clear</span></span>}</div></div>
+        <div className="fg"><label>Tags</label><input value={d.tagsInput} onChange={e=>u("tagsInput",e.target.value)} placeholder="Comma separated"/><p className="hint" style={{marginTop:4}}>Click to toggle:</p><div className="tag-picker">{TAGS.map(t=><span key={t} className={"tpick"+(curTags.includes(t)?" on":"")} onClick={()=>togTag(t)}>{t}</span>)}</div></div>
+      </div>}
+      {tab==="images"&&<ImgUploader images={d.images} onChange={v=>u("images",v)}/>}
+      {tab==="content"&&<div>
+        <div className="fg">
+          <label>Description / Article</label>
+          <ArticleEditor value={d.description} onChange={v=>u("description",v)} images={d.images} placeholder="Overview of the series…"/>
+        </div>
+        <div className="fg"><label>Research Notes <span className="hint">(admin only)</span></label><textarea rows={6} value={d.notes} onChange={e=>u("notes",e.target.value)} placeholder="Your notes, lore, theories…"/></div>
+        <div className="fg"><label>Content Warnings</label><div className="tag-picker">{CWS.map(w=><span key={w} className={"tpick"+(d.contentWarnings.includes(w)?" on":"")} onClick={()=>togCW(w)}>{w}</span>)}</div></div>
+      </div>}
+      {tab==="meta"&&<div>
+        <div className="fg"><label>Related Series</label>{allSeries.filter(s=>s.id!==series.id).length===0?<p className="dim">No other series yet.</p>:<div className="tag-picker">{allSeries.filter(s=>s.id!==series.id).map(s=><span key={s.id} className={"tpick"+(d.relatedSeries.includes(s.title)?" on":"")} onClick={()=>togRel(s.title)}>{s.title}</span>)}</div>}</div>
+        {series.id&&<div className="fg"><label>Linked Characters</label>{sc.length===0?<p className="dim">None yet.</p>:<div className="char-list-sm">{sc.map(c=><div key={c.id} className="char-sm-row"><span>{c.name}</span><span className="badge" style={{borderColor:C_CLR[c.status]||"#888",color:C_CLR[c.status]||"#888"}}>{c.status}</span></div>)}</div>}</div>}
+      </div>}
+      {tab==="custom"&&<div>
+        {d.customFields.map((cf,i)=><div key={i} className="cf-row"><input value={cf.key} onChange={e=>{const c=[...d.customFields];c[i]={...c[i],key:e.target.value};u("customFields",c)}} placeholder="Field" style={{flex:"0 0 150px"}}/><input value={cf.value} onChange={e=>{const c=[...d.customFields];c[i]={...c[i],value:e.target.value};u("customFields",c)}} placeholder="Value"/><button className="btn danger sm" onClick={()=>u("customFields",d.customFields.filter((_,j)=>j!==i))}>✕</button></div>)}
+        <button className="btn ghost sm" style={{marginTop:8}} onClick={()=>u("customFields",[...d.customFields,{key:"",value:""}])}>+ Add Field</button>
+      </div>}
+      <div className="form-acts"><button className="btn primary" onClick={save} disabled={!d.title||!d.creator}>{isNew?"Add to Archive":"Save Changes"}</button><button className="btn ghost" onClick={onCancel}>Cancel</button>{dirty&&<span className="hint" style={{alignSelf:"center"}}>● Unsaved</span>}</div>
+    </div>
+  </div>);
+}
+
+// ── EPISODE FORM ──────────────────────────────────────────────────
+function EpisodeForm({ep,allSeries,allChars,onSave,onCancel,isNew,toast}){
+  const [d,setD]=useState({...ep,images:ep.images||[],customFields:ep.customFields||[],characterIds:ep.characterIds||[]});
+  const [tab,setTab]=useState("basic"),[dirty,setDirty]=useState(false);
+  useUnsaved(dirty);
+  const u=(k,v)=>{setD(p=>({...p,[k]:v}));setDirty(true);};
+  const togChar=id=>{const c=d.characterIds;u("characterIds",c.includes(id)?c.filter(x=>x!==id):[...c,id]);};
+  const save=()=>{onSave({...d});setDirty(false);};
+  const ser=allSeries.find(s=>s.id===d.seriesId);
+  const serChars=allChars.filter(c=>c.seriesId===d.seriesId);
+  const TABS=[["basic","Basic"],["synopsis","Synopsis"],["cast","Cast"],["images","Images"],["custom","Custom"]];
+  return(<div className="form-page">
+    <div className="crumb"><span onClick={onCancel} className="bc">Archive</span><span className="bcs">›</span>{ser&&<><span onClick={()=>onCancel()} className="bc">{ser.title}</span><span className="bcs">›</span></>}<span>{isNew?"New Episode":"Edit: "+ep.title}</span></div>
+    {dirty&&<div className="unsaved-bar">● Unsaved changes</div>}
+    <h1 className="form-ttl">{isNew?"Add New Episode":"Editing: "+ep.title}</h1>
+    <div className="form-tabs">{TABS.map(([id,l])=><button key={id} className={"ftab"+(tab===id?" on":"")} onClick={()=>setTab(id)}>{l}</button>)}</div>
+    <div className="form-body">
+      {tab==="basic"&&<div>
+        <div className="frow">
+          <div className="fg"><label>Series *</label>
+            <select value={d.seriesId} onChange={e=>u("seriesId",e.target.value)}>
+              <option value="">— Select Series —</option>
+              {allSeries.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
+            </select>
+          </div>
+          <div className="fg"><label>Episode #</label><input value={d.episodeNumber||""} onChange={e=>u("episodeNumber",e.target.value)} placeholder="e.g. 1, 01, S1E2"/></div>
+        </div>
+        <div className="fg"><label>Title *</label><input value={d.title} onChange={e=>u("title",e.target.value)} placeholder="Episode title"/></div>
+        <div className="frow">
+          <div className="fg"><label>Air Date</label><input value={d.airDate||""} onChange={e=>u("airDate",e.target.value)} placeholder="e.g. Oct 30, 2021"/></div>
+          <div className="fg"><label>Duration</label><input value={d.duration||""} onChange={e=>u("duration",e.target.value)} placeholder="e.g. 14:22"/></div>
+        </div>
+        <div className="fg"><label>Video URL</label><input value={d.videoUrl||""} onChange={e=>u("videoUrl",e.target.value)} placeholder="https://youtube.com/..."/></div>
+        <div className="fg"><label>Short Summary <span className="hint">(shown on episode list)</span></label><textarea rows={3} value={d.summary||""} onChange={e=>u("summary",e.target.value)} placeholder="One-line description…"/></div>
+        <div className="fg"><label>Admin Notes <span className="hint">(private)</span></label><textarea rows={4} value={d.notes||""} onChange={e=>u("notes",e.target.value)} placeholder="Lore connections, theories…"/></div>
+      </div>}
+      {tab==="synopsis"&&<div>
+        <div className="fg">
+          <label>Plot Synopsis <span className="hint">(full episode breakdown)</span></label>
+          <ArticleEditor value={d.synopsis} onChange={v=>u("synopsis",v)} images={d.images} placeholder={"== Opening ==\n\nDescribe the opening segment…\n\n== Main Events ==\n\nWhat happens in this episode…"}/>
+        </div>
+      </div>}
+      {tab==="cast"&&<div>
+        <div className="fg"><label>Characters &amp; Entities Appearing</label>
+          {serChars.length===0
+            ?<p className="dim" style={{fontSize:".7rem"}}>No characters linked to this series yet.</p>
+            :<div className="tag-picker">{serChars.map(c=><span key={c.id} className={"tpick"+(d.characterIds.includes(c.id)?" on":"")} onClick={()=>togChar(c.id)}>{c.name}</span>)}</div>}
+        </div>
+        <div className="fg"><label>Guest / Other Notes</label><input value={d.castNotes||""} onChange={e=>u("castNotes",e.target.value)} placeholder="Any additional cast notes…"/></div>
+      </div>}
+      {tab==="images"&&<ImgUploader images={d.images} onChange={v=>u("images",v)}/>}
+      {tab==="custom"&&<div>
+        {d.customFields.map((cf,i)=><div key={i} className="cf-row"><input value={cf.key} onChange={e=>{const c=[...d.customFields];c[i]={...c[i],key:e.target.value};u("customFields",c)}} placeholder="Field" style={{flex:"0 0 150px"}}/><input value={cf.value} onChange={e=>{const c=[...d.customFields];c[i]={...c[i],value:e.target.value};u("customFields",c)}} placeholder="Value"/><button className="btn danger sm" onClick={()=>u("customFields",d.customFields.filter((_,j)=>j!==i))}>✕</button></div>)}
+        <button className="btn ghost sm" style={{marginTop:8}} onClick={()=>u("customFields",[...d.customFields,{key:"",value:""}])}>+ Add Field</button>
+      </div>}
+      <div className="form-acts"><button className="btn primary" onClick={save} disabled={!d.title||!d.seriesId}>{isNew?"Add Episode":"Save Changes"}</button><button className="btn ghost" onClick={onCancel}>Cancel</button>{dirty&&<span className="hint" style={{alignSelf:"center"}}>● Unsaved</span>}</div>
+    </div>
+  </div>);
+}
+
+// ── EPISODE DETAIL ────────────────────────────────────────────────
+function EpisodeDetail({ep,allSeries,allChars,isAdmin,onEdit,onDelete,onBack,onCharClick}){
+  const [lb,setLb]=useState(null);
+  const ser=allSeries.find(s=>s.id===ep.seriesId);
+  const cover=ep.images&&(ep.images.find(i=>i.iscover)||ep.images[0]);
+  const castChars=allChars.filter(c=>(ep.characterIds||[]).includes(c.id));
+  return(<div className="detail-page">
+    <div className="crumb">
+      <span onClick={onBack} className="bc">Archive</span><span className="bcs">›</span>
+      {ser&&<><span onClick={onBack} className="bc">{ser.title}</span><span className="bcs">›</span></>}
+      <span>EP {ep.episodeNumber||"?"} — {ep.title}</span>
+    </div>
+    <div className="detail-layout">
+      <div className="detail-main">
+        {cover&&<div className="detail-banner" onClick={()=>setLb(cover.data)}><img src={cover.data} alt={ep.title} className="banner-img"/><div className="banner-hint">🔍 Click to enlarge</div></div>}
+        <div className="detail-hd">
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            {ep.episodeNumber&&<span style={{fontFamily:"var(--ffb)",fontSize:".62rem",color:"var(--a)",border:"1px solid var(--a)",padding:"2px 7px",letterSpacing:"1px"}}>EP {ep.episodeNumber}</span>}
+          </div>
+          <h1 className="detail-ttl">{ep.title}</h1>
+          <div className="detail-meta">
+            {ep.airDate&&<span className="meta-chip">📅 {ep.airDate}</span>}
+            {ep.duration&&<span className="meta-chip">⏱ {ep.duration}</span>}
+            {ser&&<span className="meta-chip">↗ {ser.title}</span>}
+          </div>
+        </div>
+        {ep.summary&&<div className="wiki-sec"><div className="notes-block" style={{borderColor:"#252530",color:"var(--tx)"}}>{ep.summary}</div></div>}
+        {ep.synopsis&&<div className="wiki-sec"><h2 className="wiki-h2">Plot Synopsis</h2><div className="wiki-body">{renderArticle(ep.synopsis,ep.images)}</div></div>}
+        {ep.notes&&isAdmin&&<div className="wiki-sec"><h2 className="wiki-h2">Research Notes</h2><div className="notes-block">{ep.notes}</div></div>}
+        {castChars.length>0&&<div className="wiki-sec">
+          <h2 className="wiki-h2">Characters &amp; Entities Appearing ({castChars.length})</h2>
+          <div className="char-cards">{castChars.map(ch=><div key={ch.id} className="char-card" onClick={()=>onCharClick(ch.id)}>{ch.image?<img src={ch.image} alt={ch.name} className="char-card-img"/>:<div className="char-card-ph">?</div>}<div className="char-card-info"><div className="char-card-name">{ch.name}</div><div className="char-card-badges">{ch.type&&<span className="badge">{ch.type}</span>}{ch.status&&<span className="badge" style={{borderColor:C_CLR[ch.status]||"#888",color:C_CLR[ch.status]||"#888"}}>{ch.status}</span>}</div>{ch.summary&&<p className="char-card-sum">{ch.summary}</p>}</div><span className="char-card-arr">→</span></div>)}</div>
+        </div>}
+        {ep.castNotes&&<div className="wiki-sec"><h2 className="wiki-h2">Cast Notes</h2><p style={{fontSize:".78rem",color:"var(--td)"}}>{ep.castNotes}</p></div>}
+        {ep.images&&ep.images.length>1&&<div className="wiki-sec"><h2 className="wiki-h2">Gallery</h2><div className="gallery-grid">{ep.images.map(img=><div key={img.id} className="gallery-thumb" onClick={()=>setLb(img.data)}><img src={img.data} alt=""/>{img.iscover&&<span className="cover-lbl">COVER</span>}</div>)}</div></div>}
+        <div className="detail-acts">
+          {isAdmin&&<button className="btn primary" onClick={onEdit}>✎ Edit</button>}
+          {isAdmin&&<button className="btn danger" onClick={onDelete}>Delete</button>}
+          {ep.videoUrl&&<button className="btn ghost" onClick={()=>window.open(ep.videoUrl,"_blank","noopener,noreferrer")}>▶ Watch</button>}
+          <button className="btn ghost" onClick={onBack}>← Back</button>
+        </div>
+      </div>
+      <aside className="infobox">
+        <div className="ib-title">{ep.title}</div>
+        {cover?<img src={cover.data} alt="" className="ib-cover" onClick={()=>setLb(cover.data)}/>:<div className="ib-no-img">📼</div>}
+        <div className="ib-body">
+          {ep.episodeNumber&&<div className="ib-row"><span className="ib-k">Episode</span><span className="ib-v">#{ep.episodeNumber}</span></div>}
+          {ser&&<div className="ib-row"><span className="ib-k">Series</span><span className="ib-v">{ser.title}</span></div>}
+          {ep.airDate&&<div className="ib-row"><span className="ib-k">Air Date</span><span className="ib-v">{ep.airDate}</span></div>}
+          {ep.duration&&<div className="ib-row"><span className="ib-k">Duration</span><span className="ib-v">{ep.duration}</span></div>}
+          {castChars.length>0&&<div className="ib-row"><span className="ib-k">Cast</span><span className="ib-v">{castChars.length} character{castChars.length!==1?"s":""}</span></div>}
+          {(ep.customFields||[]).filter(cf=>cf.key).map((cf,i)=><div key={i} className="ib-row"><span className="ib-k">{cf.key}</span><span className="ib-v">{cf.value}</span></div>)}
+        </div>
+      </aside>
+    </div>
+    {lb&&<Lightbox src={lb} onClose={()=>setLb(null)}/>}
+  </div>);
+}
+
+// ── SERIES DETAIL ─────────────────────────────────────────────────
+function SeriesDetail({series,chars,eps,isAdmin,onEdit,onDelete,onBack,onTagClick,onCharClick,onAddChar,onAddEp,onEpClick,toast}){
+  const [lb,setLb]=useState(null);
+  const cover=series.images&&series.images.find(i=>i.iscover)||( series.images&&series.images[0]);
+  const sc=chars.filter(c=>c.seriesId===series.id);
+  const se=eps.filter(e=>e.seriesId===series.id).sort((a,b)=>{const n=(x)=>parseFloat(x.episodeNumber)||0;return n(a)-n(b)||a.title.localeCompare(b.title);});
+  return(<div className="detail-page">
+    <div className="crumb"><span onClick={onBack} className="bc">Archive</span><span className="bcs">›</span><span>{series.title}</span></div>
+    <div className="detail-layout">
+      <div className="detail-main">
+        {cover&&<div className="detail-banner" onClick={()=>setLb(cover.data)}><img src={cover.data} alt={series.title} className="banner-img"/><div className="banner-hint">🔍 Click to enlarge</div></div>}
+        <div className="detail-hd">
+          <h1 className="detail-ttl">{series.title}</h1>
+          <div className="detail-meta">
+            <span className="status-pill" style={{background:"color-mix(in srgb,"+(S_CLR[series.status]||"#888")+" 12%,transparent)",borderColor:S_CLR[series.status]||"#888",color:S_CLR[series.status]||"#888"}}><span className="dot" style={{background:S_CLR[series.status]||"#888"}}/>{series.status}</span>
+            {series.rating&&<span className="rating-pill">★ {series.rating}/10</span>}
+            {series.platform&&<span className="meta-chip">{series.platform}</span>}
+            {series.episodeCount&&<span className="meta-chip">{series.episodeCount} ep.</span>}
+          </div>
+          <div className="tags-row">{(series.tags||[]).map(t=><span key={t} className="tag" onClick={()=>onTagClick(t)}>{t}</span>)}</div>
+        </div>
+        {(series.contentWarnings||[]).length>0&&<div className="cw-bar"><span>⚠ Content Warnings:</span>{series.contentWarnings.map(w=><span key={w} className="cw-tag">{w}</span>)}</div>}
+        <div className="wiki-sec"><h2 className="wiki-h2">Overview</h2><div className="wiki-body">{series.description?renderArticle(series.description,series.images):<span className="dim">No description added yet.</span>}</div></div>
+        {series.notes&&<div className="wiki-sec"><h2 className="wiki-h2">Research Notes</h2><div className="notes-block">{series.notes}</div></div>}
+        <div className="wiki-sec">
+          <div className="wiki-sec-hd"><h2 className="wiki-h2">Characters &amp; Entities{sc.length>0?" ("+sc.length+")":""}</h2>{isAdmin&&<button className="btn primary sm" onClick={()=>onAddChar(series.id)}>+ Add Character</button>}</div>
+          {sc.length===0?<p className="empty-inline">{isAdmin?"No characters yet.":"No characters documented yet."}</p>
+          :<div className="char-cards">{sc.map(ch=><div key={ch.id} className="char-card" onClick={()=>onCharClick(ch.id)}>{ch.image?<img src={ch.image} alt={ch.name} className="char-card-img"/>:<div className="char-card-ph">?</div>}<div className="char-card-info"><div className="char-card-name">{ch.name}</div><div className="char-card-badges">{ch.type&&<span className="badge">{ch.type}</span>}{ch.status&&<span className="badge" style={{borderColor:C_CLR[ch.status]||"#888",color:C_CLR[ch.status]||"#888"}}>{ch.status}</span>}</div>{ch.summary&&<p className="char-card-sum">{ch.summary}</p>}</div><span className="char-card-arr">→</span></div>)}</div>}
+        </div>
+        {series.images&&series.images.length>1&&<div className="wiki-sec"><h2 className="wiki-h2">Gallery</h2><div className="gallery-grid">{series.images.map(img=><div key={img.id} className="gallery-thumb" onClick={()=>setLb(img.data)}><img src={img.data} alt=""/>{img.iscover&&<span className="cover-lbl">COVER</span>}</div>)}</div></div>}
+        <div className="wiki-sec">
+          <div className="wiki-sec-hd"><h2 className="wiki-h2">Episodes{se.length>0?" ("+se.length+")":""}</h2>{isAdmin&&<button className="btn primary sm" onClick={()=>onAddEp(series.id)}>+ Add Episode</button>}</div>
+          {se.length===0?<p className="empty-inline">{isAdmin?"No episodes added yet. Click + Add Episode to get started.":"No episodes documented yet."}</p>
+          :<div className="ep-list">{se.map(ep=>{const cast=ep.characterIds&&ep.characterIds.length;return(<div key={ep.id} className="ep-row" onClick={()=>onEpClick(ep.id)}>
+            <div className="ep-num">{ep.episodeNumber||"—"}</div>
+            <div className="ep-info">
+              <div className="ep-title">{ep.title}</div>
+              <div className="ep-meta">{ep.airDate&&<span>{ep.airDate}</span>}{ep.duration&&<span>⏱ {ep.duration}</span>}{cast>0&&<span>{cast} char{cast!==1?"s":""}</span>}</div>
+              {ep.summary&&<div className="ep-sum">{ep.summary}</div>}
+            </div>
+            <span className="ep-arr">→</span>
+          </div>);})}</div>}
+        </div>
+        {(series.relatedSeries||[]).length>0&&<div className="wiki-sec"><h2 className="wiki-h2">See Also</h2><div className="tags-row">{series.relatedSeries.map(r=><span key={r} className="tag related">{r}</span>)}</div></div>}
+        <CommunityRating sid={series.id} toast={toast}/>
+        <Reviews sid={series.id} isAdmin={isAdmin} toast={toast}/>
+        <div className="detail-acts">{isAdmin&&<button className="btn primary" onClick={onEdit}>✎ Edit</button>}{isAdmin&&<button className="btn danger" onClick={onDelete}>Delete</button>}{series.sourceUrl&&<button className="btn ghost" onClick={()=>window.open(series.sourceUrl,"_blank","noopener,noreferrer")}>↗ Source</button>}<button className="btn ghost" onClick={onBack}>← Archive</button></div>
+      </div>
+      <aside className="infobox">
+        <div className="ib-title">{series.title}</div>
+        {cover?<img src={cover.data} alt="" className="ib-cover" onClick={()=>setLb(cover.data)}/>:<div className="ib-no-img">📺</div>}
+        <div className="ib-body">
+          <div className="ib-row"><span className="ib-k">Creator</span><span className="ib-v">{series.creator}</span></div>
+          <div className="ib-row"><span className="ib-k">Year</span><span className="ib-v">{series.year}</span></div>
+          <div className="ib-row"><span className="ib-k">Platform</span><span className="ib-v">{series.platform}</span></div>
+          <div className="ib-row"><span className="ib-k">Status</span><span className="ib-v" style={{color:S_CLR[series.status]||"#ccc"}}>{series.status}</span></div>
+          {series.episodeCount&&<div className="ib-row"><span className="ib-k">Episodes</span><span className="ib-v">{series.episodeCount}</span></div>}
+          {series.rating&&<div className="ib-row"><span className="ib-k">Rating</span><span className="ib-v">★ {series.rating}/10</span></div>}
+          {(series.customFields||[]).filter(cf=>cf.key).map((cf,i)=><div key={i} className="ib-row"><span className="ib-k">{cf.key}</span><span className="ib-v">{cf.value}</span></div>)}
+        </div>
+      </aside>
+    </div>
+    {lb&&<Lightbox src={lb} onClose={()=>setLb(null)}/>}
+  </div>);
+}
+
+// ── CHAR FORM ─────────────────────────────────────────────────────
+function CharForm({char,allSeries,onSave,onCancel,isNew,toast}){
+  const [d,setD]=useState({...char,images:char.images||[],customFields:char.customFields||[]});
+  const [tab,setTab]=useState("info"),[dirty,setDirty]=useState(false);
+  useUnsaved(dirty);
+  const u=(k,v)=>{setD(p=>({...p,[k]:v}));setDirty(true);};
+  const imgRef=useRef(null);
+  const handleImg=f=>{if(!f||!f.type.startsWith("image/"))return;const r=new FileReader();r.onload=e=>u("image",e.target.result);r.readAsDataURL(f);};
+  const ser=allSeries.find(s=>s.id===d.seriesId);
+  const save=()=>{if(d.name){onSave(d);setDirty(false);}};
+  const ART_PLACEHOLDER="Write the full article here...\n\n== Appearance ==\nDescribe what this character looks like.\n\n== Role in the Series ==\nWhy do they matter?\n\n== Lore & Theories ==\nFan theories, unanswered questions.\n\n== Notable Appearances ==\nKey episodes or tapes.";
+  return(<div className="form-page">
+    <div className="crumb">{ser?<span><span onClick={onCancel} className="bc">Archive</span><span className="bcs">›</span><span onClick={onCancel} className="bc">{ser.title}</span></span>:<span onClick={onCancel} className="bc">Characters</span>}<span className="bcs">›</span><span>{isNew?"New":"Edit: "+(char.name||"?")}</span></div>
+    {dirty&&<div className="unsaved-bar">● Unsaved changes</div>}
+    <h1 className="form-ttl">{isNew?"Add Character":"Editing: "+(d.name||"Character")}</h1>
+    <div className="form-tabs">{[["info","Info"],["images","Images"],["article","Article"],["custom","Custom"]].map(([id,l])=><button key={id} className={"ftab"+(tab===id?" on":"")} onClick={()=>setTab(id)}>{l}</button>)}</div>
+    <div className="form-body">
+      {tab==="info"&&<div className="char-edit-grid">
+        <div className="char-edit-side">
+          <div className="char-portrait-upload" onClick={()=>imgRef.current&&imgRef.current.click()}>{d.image?<img src={d.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,opacity:.22}}><span style={{fontSize:"3rem"}}>👤</span><span style={{fontSize:".6rem"}}>Click to upload</span></div>}<input ref={imgRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImg(e.target.files[0])}/></div>
+          {d.image&&<button className="btn danger sm" style={{width:"100%",marginTop:5}} onClick={()=>u("image",null)}>Remove</button>}
+          <div className="fg" style={{marginTop:10}}><label>Type</label><select value={d.type} onChange={e=>u("type",e.target.value)}>{CT.map(t=><option key={t}>{t}</option>)}</select></div>
+          <div className="fg"><label>Status</label><select value={d.status} onChange={e=>u("status",e.target.value)}>{CS.map(s=><option key={s}>{s}</option>)}</select></div>
+          <div className="fg"><label>Series</label><select value={d.seriesId||""} onChange={e=>u("seriesId",e.target.value)}><option value="">— None —</option>{allSeries.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}</select></div>
+        </div>
+        <div className="char-edit-main">
+          <div className="fg"><label>Name *</label><input value={d.name} onChange={e=>u("name",e.target.value)} placeholder="Character name"/></div>
+          <div className="fg"><label>Aliases</label><input value={d.aliases||""} onChange={e=>u("aliases",e.target.value)} placeholder="Other names…"/></div>
+          <div className="fg"><label>First Appearance</label><input value={d.firstAppearance||""} onChange={e=>u("firstAppearance",e.target.value)} placeholder="Episode or tape…"/></div>
+          <div className="fg"><label>Voiced / Portrayed By</label><input value={d.voicedBy||""} onChange={e=>u("voicedBy",e.target.value)} placeholder="Creator or actor"/></div>
+          <div className="fg"><label>Summary</label><textarea rows={4} value={d.summary||""} onChange={e=>u("summary",e.target.value)} placeholder="Brief overview…"/></div>
+        </div>
+      </div>}
+      {tab==="images"&&<div>
+        <p className="hint" style={{marginBottom:10}}>Upload images here first, then go to the Article tab to place them in the article text using the toolbar.</p>
+        <ImgUploader images={d.images} onChange={v=>u("images",v)}/>
+      </div>}
+      {tab==="article"&&<ArticleEditor value={d.article||""} onChange={v=>u("article",v)} images={d.images} placeholder={ART_PLACEHOLDER}/>}
+      {tab==="custom"&&<div>
+        {d.customFields.map((cf,i)=><div key={i} className="cf-row"><input value={cf.key} onChange={e=>{const c=[...d.customFields];c[i]={...c[i],key:e.target.value};u("customFields",c)}} placeholder="Field" style={{flex:"0 0 140px"}}/><input value={cf.value} onChange={e=>{const c=[...d.customFields];c[i]={...c[i],value:e.target.value};u("customFields",c)}} placeholder="Value"/><button className="btn danger sm" onClick={()=>u("customFields",d.customFields.filter((_,j)=>j!==i))}>✕</button></div>)}
+        <button className="btn ghost sm" style={{marginTop:8}} onClick={()=>u("customFields",[...d.customFields,{key:"",value:""}])}>+ Add Field</button>
+      </div>}
+      <div className="form-acts"><button className="btn primary" onClick={save} disabled={!d.name}>{isNew?"Create Page":"Save Changes"}</button><button className="btn ghost" onClick={onCancel}>Cancel</button>{dirty&&<span className="hint" style={{alignSelf:"center"}}>● Unsaved</span>}</div>
+    </div>
+  </div>);
+}
+
+// ── CHAR DETAIL ───────────────────────────────────────────────────
+function CharDetail({char,allSeries,allEps,isAdmin,onEdit,onDelete,onBack,onSeriesClick,onEpClick}){
+  const series=allSeries.find(s=>s.id===char.seriesId);
+  const appearances=(allEps||[]).filter(e=>(e.characterIds||[]).includes(char.id)).sort((a,b)=>{const n=x=>parseFloat(x.episodeNumber)||0;return n(a)-n(b)||a.title.localeCompare(b.title);});
+  const toc=[];
+  if(char.article){char.article.split("\n\n").forEach((p,i)=>{if(p.startsWith("== ")&&p.endsWith(" =="))toc.push({text:p.slice(3,-3),idx:i});});}
+  return(<div className="detail-page">
+    <div className="crumb"><span onClick={()=>series?onSeriesClick(series.id):onBack()} className="bc">{series?series.title:"Characters"}</span><span className="bcs">›</span><span>{char.name}</span></div>
+    <div className="detail-layout">
+      <div className="detail-main">
+        <div className="detail-hd">
+          <h1 className="detail-ttl">{char.name}</h1>
+          <div className="detail-meta">
+            {char.type&&<span className="meta-chip">{char.type}</span>}
+            {char.status&&<span className="status-pill" style={{background:"color-mix(in srgb,"+(C_CLR[char.status]||"#888")+" 12%,transparent)",borderColor:C_CLR[char.status]||"#888",color:C_CLR[char.status]||"#888"}}><span className="dot" style={{background:C_CLR[char.status]||"#888"}}/>{char.status}</span>}
+            {series&&<span className="meta-chip series-link" onClick={()=>onSeriesClick(series.id)}>↗ {series.title}</span>}
+            {appearances.length>0&&<span className="meta-chip">📼 {appearances.length} episode{appearances.length!==1?"s":""}</span>}
+          </div>
+        </div>
+        {char.summary&&<div className="summary-block">{char.summary}</div>}
+        {toc.length>1&&<div className="toc-box"><div className="toc-title">Contents</div><ol className="toc-list">{toc.map((s,i)=><li key={i}><a href={"#sec-"+s.idx} onClick={e=>{e.preventDefault();const el=document.getElementById("sec-"+s.idx);if(el)el.scrollIntoView({behavior:"smooth"});}}>{s.text}</a></li>)}</ol></div>}
+        <div className="char-article">{char.article?renderArticle(char.article,char.images||[]):<p className="dim" style={{fontStyle:"italic"}}>No article written yet.{isAdmin?" Click Edit to write one.":""}</p>}</div>
+        {appearances.length>0&&<div className="wiki-sec">
+          <h2 className="wiki-h2">Episode Appearances ({appearances.length})</h2>
+          <div className="ep-list">{appearances.map(ep=>{const epSer=allSeries.find(s=>s.id===ep.seriesId);return(
+            <div key={ep.id} className="ep-row" onClick={()=>onEpClick(ep.id)}>
+              <div className="ep-num">{ep.episodeNumber||"—"}</div>
+              <div className="ep-info">
+                <div className="ep-title">{ep.title}</div>
+                <div className="ep-meta">
+                  {epSer&&<span style={{color:"var(--a)",opacity:.8}}>↗ {epSer.title}</span>}
+                  {ep.airDate&&<span>{ep.airDate}</span>}
+                  {ep.duration&&<span>⏱ {ep.duration}</span>}
+                </div>
+                {ep.summary&&<div className="ep-sum">{ep.summary}</div>}
+              </div>
+              <span className="ep-arr">→</span>
+            </div>
+          );})}</div>
+        </div>}
+        <div className="detail-acts">{isAdmin&&<button className="btn primary" onClick={onEdit}>✎ Edit</button>}{isAdmin&&<button className="btn danger" onClick={onDelete}>Delete</button>}{series&&<button className="btn ghost" onClick={()=>onSeriesClick(series.id)}>↗ {series.title}</button>}<button className="btn ghost" onClick={onBack}>← Back</button></div>
+      </div>
+      <aside className="infobox">
+        <div className="ib-title">{char.name}</div>
+        {char.image?<img src={char.image} alt={char.name} className="ib-cover"/>:<div className="ib-no-img">👤</div>}
+        <div className="ib-body">
+          {char.type&&<div className="ib-row"><span className="ib-k">Type</span><span className="ib-v">{char.type}</span></div>}
+          {char.status&&<div className="ib-row"><span className="ib-k">Status</span><span className="ib-v" style={{color:C_CLR[char.status]||"#ccc"}}>{char.status}</span></div>}
+          {series&&<div className="ib-row"><span className="ib-k">Series</span><span className="ib-v series-link" onClick={()=>onSeriesClick(series.id)}>{series.title}</span></div>}
+          {appearances.length>0&&<div className="ib-row"><span className="ib-k">Appearances</span><span className="ib-v">{appearances.length} episode{appearances.length!==1?"s":""}</span></div>}
+          {char.aliases&&<div className="ib-row"><span className="ib-k">Also Known As</span><span className="ib-v">{char.aliases}</span></div>}
+          {char.firstAppearance&&<div className="ib-row"><span className="ib-k">First Appearance</span><span className="ib-v">{char.firstAppearance}</span></div>}
+          {char.voicedBy&&<div className="ib-row"><span className="ib-k">Voiced By</span><span className="ib-v">{char.voicedBy}</span></div>}
+          {(char.customFields||[]).filter(cf=>cf.key).map((cf,i)=><div key={i} className="ib-row"><span className="ib-k">{cf.key}</span><span className="ib-v">{cf.value}</span></div>)}
+        </div>
+      </aside>
+    </div>
+  </div>);
+}
+
+// ── MAIN APP ─────────────────────────────────────────────────────
+function App(){
+  const [series,setSeries]=useState(SEED_SERIES);
+  const [chars,setChars]=useState(SEED_CHARS);
+  const [eps,setEps]=useState(SEED_EPS);
+  const [settings,setSettings]=useState(DEF);
+  const [loaded,setLoaded]=useState(false);
+  const [isAdmin,setIsAdmin]=useState(false);
+  const [showLogin,setShowLogin]=useState(false);
+  const [showSettings,setShowSettings]=useState(false);
+  const [confirmDel,setConfirmDel]=useState(null);
+  const [nav,setNav]=useState({page:"series-list"});
+  const [section,setSection]=useState("series");
+  const [sSearch,setSSearch]=useState(""),[sTag,setSTag]=useState(""),[sStat,setSStat]=useState("");
+  const [cSearch,setCSearch]=useState(""),[cType,setCType]=useState(""),[cSer,setCSer]=useState("");
+  const [toasts,addToast]=useToasts();
+  const sidRef=useRef(100),cidRef=useRef(200),eidRef=useRef(300);
+
+  useEffect(()=>{
+    (async()=>{
+      const sv=await sGet("ahw_series",true);const cv=await sGet("ahw_chars",true);const ev=await sGet("ahw_eps",true);const st=await sGet("ahw_settings",false);
+      if(sv&&sv.length>0){setSeries(sv);sidRef.current=Math.max(...sv.map(s=>parseInt(s.id.replace(/\D/g,""))||0),99)+1;}
+      if(cv&&cv.length>0){setChars(cv);cidRef.current=Math.max(...cv.map(c=>parseInt(c.id.replace(/\D/g,""))||0),199)+1;}
+      if(ev&&ev.length>0){setEps(ev);eidRef.current=Math.max(...ev.map(e=>parseInt(e.id.replace(/\D/g,""))||0),299)+1;}
+      if(st)setSettings(p=>({...p,...st}));
+      if(ssGet("ahw_isAdmin")===true)setIsAdmin(true);
+      setLoaded(true);
+    })();
+  },[]);
+  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_series",series,true);},[series,loaded,isAdmin]);
+  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_chars",chars,true);},[chars,loaded,isAdmin]);
+  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_eps",eps,true);},[eps,loaded,isAdmin]);
+  useEffect(()=>{if(loaded)sSet("ahw_settings",settings,false);},[settings,loaded]);
+  useEffect(()=>{window.scrollTo({top:0,behavior:"smooth"});},[nav]);
+  useEffect(()=>{
+    const h=(e)=>{
+      if(e.key==="Escape"&&!showLogin&&!showSettings&&!confirmDel){
+        if(nav.page==="series-detail")setNav({page:"series-list"});
+        else if(nav.page==="char-detail"){const s=series.find(s=>s.id===chars.find(c=>c.id===nav.id)?.seriesId);setNav(s?{page:"series-detail",id:s.id}:{page:"char-list"});}
+        else if(nav.page==="ep-detail"){const e=eps.find(e=>e.id===nav.id);setNav(e?{page:"series-detail",id:e.seriesId}:{page:"series-list"});}
+        else if(nav.page==="ep-edit"){const e=nav.id?eps.find(e=>e.id===nav.id):null;setNav(e?{page:"ep-detail",id:e.id}:nav.returnTo?.seriesId?{page:"series-detail",id:nav.returnTo.seriesId}:{page:"series-list"});}
+        else if(nav.page==="series-edit")setNav(nav.id?{page:"series-detail",id:nav.id}:{page:"series-list"});
+        else if(nav.page==="char-edit"){if(nav.id)setNav({page:"char-detail",id:nav.id});else if(nav.returnTo&&nav.returnTo.seriesId)setNav({page:"series-detail",id:nav.returnTo.seriesId});else setNav({page:"char-list"});}
+      }
+    };
+    window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);
+  },[nav,showLogin,showSettings,confirmDel,series,chars,eps]);
+
+  const goHome=()=>{setSection("series");setNav({page:"series-list"});setSSearch("");setSTag("");setSStat("");};
+  const adminLogin=()=>{setIsAdmin(true);ssSet("ahw_isAdmin",true);setShowLogin(false);addToast("Admin mode enabled.","success");};
+  const adminLogout=()=>{setIsAdmin(false);ssSet("ahw_isAdmin",false);addToast("Logged out.","info");};
+
+  const newSer=()=>({id:null,title:"",creator:"",year:new Date().getFullYear(),platform:"YouTube",status:"Unknown",tags:[],description:"",notes:"",sourceUrl:"",rating:null,episodeCount:"",contentWarnings:[],relatedSeries:[],customFields:[],images:[]});
+  const newChr=(sid)=>({id:null,seriesId:sid||"",name:"",type:"Character",status:"Unknown",aliases:"",firstAppearance:"",voicedBy:"",summary:"",article:"",image:null,images:[],customFields:[]});
+  const newEp=(sid)=>({id:null,seriesId:sid||"",title:"",episodeNumber:"",airDate:"",duration:"",videoUrl:"",summary:"",synopsis:"",notes:"",castNotes:"",characterIds:[],images:[],customFields:[]});
+
+  const saveSer=(s)=>{if(!isAdmin)return;let id=s.id;if(!id){id="s"+sidRef.current++;const n={...s,id};setSeries(p=>[...p,n]);}else{setSeries(p=>p.map(e=>e.id===id?s:e));}setNav({page:"series-detail",id});addToast(s.id?"Series saved!":"Series added!","success");};
+  const saveChr=(c)=>{if(!isAdmin)return;let id=c.id;if(!id){id="c"+cidRef.current++;const n={...c,id};setChars(p=>[...p,n]);}else{setChars(p=>p.map(e=>e.id===id?c:e));}setNav({page:"char-detail",id});addToast(c.id?"Character saved!":"Character created!","success");};
+  const saveEp=(e)=>{if(!isAdmin)return;let id=e.id;if(!id){id="e"+eidRef.current++;const n={...e,id};setEps(p=>[...p,n]);}else{setEps(p=>p.map(x=>x.id===id?e:x));}setNav({page:"ep-detail",id});addToast(e.id?"Episode saved!":"Episode added!","success");};
+  const delSer=(id)=>{if(!isAdmin)return;setSeries(p=>p.filter(s=>s.id!==id));setChars(p=>p.map(c=>c.seriesId===id?{...c,seriesId:""}:c));setEps(p=>p.filter(e=>e.seriesId!==id));setConfirmDel(null);goHome();addToast("Series deleted.","info");};
+  const delChr=(id)=>{if(!isAdmin)return;const ch=chars.find(c=>c.id===id);setChars(p=>p.filter(c=>c.id!==id));setConfirmDel(null);if(ch&&ch.seriesId)setNav({page:"series-detail",id:ch.seriesId});else setNav({page:"char-list"});addToast("Character deleted.","info");};
+  const delEp=(id)=>{if(!isAdmin)return;const ep=eps.find(e=>e.id===id);setEps(p=>p.filter(e=>e.id!==id));setConfirmDel(null);if(ep&&ep.seriesId)setNav({page:"series-detail",id:ep.seriesId});else setNav({page:"series-list"});addToast("Episode deleted.","info");};
+
+  const filtSer=series.filter(s=>{const q=sSearch.toLowerCase();return(!q||s.title.toLowerCase().includes(q)||s.creator.toLowerCase().includes(q)||(s.tags||[]).some(t=>t.toLowerCase().includes(q)))&&(!sTag||(s.tags||[]).includes(sTag))&&(!sStat||s.status===sStat);});
+  const filtChr=chars.filter(c=>{const q=cSearch.toLowerCase();return(!q||c.name.toLowerCase().includes(q)||(c.aliases||"").toLowerCase().includes(q))&&(!cType||c.type===cType)&&(!cSer||c.seriesId===cSer);});
+  const usedTags=[...new Set(series.flatMap(s=>s.tags||[]))].sort();
+  const usedTypes=[...new Set(chars.map(c=>c.type).filter(Boolean))].sort();
+  const df=DF.find(f=>f.id===settings.displayFont)||DF[0];
+  const bf=BF.find(f=>f.id===settings.bodyFont)||BF[0];
+  const curSer=series.find(s=>s.id===nav.id);
+  const curChr=chars.find(c=>c.id===nav.id);
+  const curEp=eps.find(e=>e.id===nav.id);
+
+  const CSS=`
+    @import url('https://fonts.googleapis.com/css2?family=${df.import}&family=${bf.import}&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--a:${settings.accentColor};--bg:${settings.bgColor};--s1:#0b0b0e;--s2:#111115;--bd:#1e1e24;--tx:#c8c8d0;--td:#55555f;--red:#ff3333;--ffd:'${df.label}',monospace;--ffb:'${bf.label}',monospace;--glow:${settings.accentGlow?"0 0 20px color-mix(in srgb,var(--a) 40%,transparent)":"none"};--glow2:${settings.accentGlow?"0 0 40px color-mix(in srgb,var(--a) 18%,transparent)":"none"};}
+    html,body{height:100%;background:var(--bg);}body{color:var(--tx);font-family:var(--ffb);overflow-x:hidden;font-size:15px;}code{background:#111;padding:1px 5px;border:1px solid var(--bd);font-size:.85em;}
+    .scanlines{position:fixed;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,var(--slo,.06)) 2px,rgba(0,0,0,var(--slo,.06)) 4px);}
+    .static-noise{position:fixed;inset:0;pointer-events:none;z-index:51;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");background-size:200px;opacity:var(--sto,.3);mix-blend-mode:screen;animation:sf .08s steps(1) infinite;}
+    @keyframes sf{0%,100%{background-position:0 0}25%{background-position:40px 10px}50%{background-position:-20px 30px}75%{background-position:15px -15px}}
+    .vignette{position:fixed;inset:0;pointer-events:none;z-index:49;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.8) 100%);}
+    .vhs-lines{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.007) 4px);animation:vhsS 12s linear infinite;}@keyframes vhsS{from{background-position:0 0}to{background-position:0 200px}}
+    .vhs-bleed{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 96%,color-mix(in srgb,var(--vc,#f00) 30%,transparent) 100%);opacity:.3;animation:vhsB .15s steps(1) infinite;}@keyframes vhsB{0%,100%{opacity:.2}50%{opacity:.4}}
+    .vhs-tracking{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--vc,#0ff) 60%,transparent),transparent);filter:blur(1px);opacity:.6;animation:vhsT 7s linear infinite;}@keyframes vhsT{from{top:-3px}to{top:100%}}
+    .wiki-shell{display:flex;flex-direction:column;min-height:100vh;position:relative;z-index:10;}
+    .topbar{background:rgba(5,5,8,.93);border-bottom:1px solid var(--bd);backdrop-filter:blur(10px);padding:0 22px;display:flex;align-items:stretch;position:sticky;top:0;z-index:200;}
+    .topbar-brand{display:flex;flex-direction:column;justify-content:center;padding:12px 20px 12px 0;border-right:1px solid var(--bd);min-width:185px;gap:2px;cursor:pointer;transition:opacity .15s;user-select:none;}.topbar-brand:hover{opacity:.8;}
+    .brand-name{font-family:var(--ffd);font-size:1.42rem;color:var(--a);letter-spacing:2px;line-height:1;text-shadow:var(--glow);}
+    .brand-sub{font-size:.49rem;color:var(--td);letter-spacing:4px;text-transform:uppercase;}
+    .topbar-nav{display:flex;align-items:stretch;flex:1;}
+    .nav-tab{display:flex;align-items:center;gap:6px;padding:0 18px;color:var(--td);font-size:.67rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--ffb);}.nav-tab:hover{color:var(--tx);}.nav-tab.on{color:var(--a);border-bottom-color:var(--a);}
+    .nav-count{font-size:.52rem;background:color-mix(in srgb,var(--a) 15%,transparent);color:var(--a);padding:1px 5px;border-radius:2px;}
+    .topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;padding-left:14px;}
+    .stats-text{font-size:.57rem;color:var(--td);white-space:nowrap;}
+    .admin-badge{font-size:.57rem;padding:2px 7px;border:1px solid var(--a);color:var(--a);letter-spacing:1px;background:color-mix(in srgb,var(--a) 8%,transparent);}
+    .page-wrap{display:grid;grid-template-columns:1fr 205px;flex:1;}
+    .page-content{padding:24px 20px;border-right:1px solid var(--bd);min-width:0;}
+    .page-sidebar{padding:18px 13px;display:flex;flex-direction:column;gap:16px;}
+    .sb-widget{border:1px solid var(--bd);background:var(--s1);}
+    .sb-widget-title{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:var(--a);padding:7px 11px;border-bottom:1px solid var(--bd);background:color-mix(in srgb,var(--a) 5%,transparent);}
+    .sb-widget-body{padding:9px 11px;}
+    .sb-tag-cloud{display:flex;flex-wrap:wrap;gap:4px;}
+    .sb-recent{display:flex;flex-direction:column;}
+    .sb-recent-item{padding:6px 0;border-bottom:1px solid var(--bd);cursor:pointer;}.sb-recent-item:last-child{border-bottom:none;}.sb-recent-item:hover .sb-rname{color:var(--a);}
+    .sb-rname{font-size:.69rem;color:var(--tx);transition:color .15s;display:block;}
+    .sb-rmeta{font-size:.56rem;color:var(--td);display:block;margin-top:1px;}
+    .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:11px;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:9px;}
+    .section-title{font-family:var(--ffd);font-size:1.5rem;color:#fff;}.section-count{font-size:.59rem;color:var(--td);margin-left:7px;}
+    .controls{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}.ctrl-search{flex:1;min-width:130px;}
+    .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(262px,1fr));gap:10px;}
+    .s-card{background:var(--s1);border:1px solid var(--bd);cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .15s;position:relative;overflow:hidden;}
+    .s-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--a);transform:scaleX(0);transform-origin:left;transition:transform .22s;}
+    .s-card:hover{border-color:#2a2a30;box-shadow:0 4px 22px rgba(0,0,0,.5);transform:translateY(-1px);}.s-card:hover::after{transform:scaleX(1);}
+    .s-card-cover{width:100%;height:112px;object-fit:cover;display:block;opacity:.82;}.s-card-body{padding:12px;}
+    .s-card-title{font-family:var(--ffd);font-size:1.2rem;color:#eee;margin-bottom:2px;}
+    .s-card-meta{font-size:.6rem;color:var(--td);margin-bottom:7px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+    .s-card-desc{font-size:.66rem;color:#777;line-height:1.65;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:9px;}
+    .char-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(182px,1fr));gap:9px;}
+    .ch-card{background:var(--s1);border:1px solid var(--bd);cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .15s;overflow:hidden;}
+    .ch-card:hover{border-color:#2a2a30;box-shadow:0 4px 22px rgba(0,0,0,.5);transform:translateY(-1px);}
+    .ch-card-img{width:100%;height:142px;object-fit:cover;display:block;opacity:.82;}
+    .ch-card-noimg{width:100%;height:84px;background:#080808;display:flex;align-items:center;justify-content:center;font-size:2.5rem;opacity:.1;}
+    .ch-card-body{padding:10px;}.ch-card-name{font-family:var(--ffd);font-size:1.06rem;color:#eee;margin-bottom:3px;}
+    .ch-card-series{font-size:.58rem;color:var(--a);opacity:.8;margin-bottom:5px;}
+    .ch-card-badges{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px;}
+    .ch-card-sum{font-size:.62rem;color:#666;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+    .tags-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+    .tag{font-size:.56rem;padding:2px 6px;border:1px solid #252530;color:#555;text-transform:uppercase;letter-spacing:1px;cursor:pointer;transition:all .12s;}.tag:hover{border-color:var(--a);color:var(--a);}.tag.on{border-color:var(--a);color:var(--a);background:color-mix(in srgb,var(--a) 10%,transparent);}.tag.related{border-style:dashed;}
+    .badge{font-size:.53rem;padding:1px 6px;border:1px solid #2a2a30;color:#555;text-transform:uppercase;letter-spacing:1px;}
+    .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle;}
+    .status-pill{font-size:.6rem;padding:2px 8px;border:1px solid;border-radius:2px;display:inline-flex;align-items:center;}
+    .rating-pill{font-size:.6rem;padding:2px 8px;border:1px solid #2a2a30;color:#ffcc44;}
+    .meta-chip{font-size:.6rem;padding:2px 8px;border:1px solid var(--bd);color:var(--td);}
+    .series-link{cursor:pointer;}.series-link:hover{color:var(--a)!important;text-decoration:underline;}
+    .detail-page{padding:24px 20px;max-width:1100px;margin:0 auto;width:100%;}
+    .crumb{display:flex;align-items:center;gap:5px;font-size:.62rem;color:var(--td);margin-bottom:16px;}
+    .bc{cursor:pointer;transition:color .15s;}.bc:hover{color:var(--a);}.bcs{opacity:.35;}
+    .detail-layout{display:grid;grid-template-columns:1fr 252px;gap:24px;align-items:start;}
+    .detail-banner{position:relative;margin-bottom:18px;cursor:pointer;overflow:hidden;border:1px solid var(--bd);}
+    .banner-img{width:100%;max-height:285px;object-fit:cover;display:block;opacity:.85;transition:opacity .2s;}
+    .banner-hint{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:.65rem;letter-spacing:2px;}
+    .detail-banner:hover .banner-img{opacity:1;}.detail-banner:hover .banner-hint{opacity:1;}
+    .detail-hd{margin-bottom:15px;padding-bottom:13px;border-bottom:1px solid var(--bd);}
+    .detail-ttl{font-family:var(--ffd);font-size:clamp(1.72rem,4vw,2.65rem);color:#fff;margin-bottom:10px;line-height:1;}
+    .detail-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+    .wiki-sec{margin-bottom:24px;}.wiki-sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;gap:9px;}
+    .wiki-h2{font-family:var(--ffd);font-size:1.15rem;color:var(--a);padding-bottom:5px;border-bottom:1px solid var(--bd);flex:1;}
+    .wiki-body{font-size:.78rem;line-height:1.9;color:var(--tx);}
+    .notes-block{background:var(--s2);border:1px solid var(--bd);border-left:2px solid var(--a);padding:13px;font-size:.73rem;line-height:1.8;color:#888;white-space:pre-wrap;}
+    .cw-bar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px 13px;background:#0a0400;border:1px solid #3a1800;margin-bottom:16px;font-size:.6rem;color:#ff8800;}
+    .cw-tag{font-size:.53rem;padding:1px 6px;background:#1a0a00;border:1px solid #3a1800;color:#ff8800;text-transform:uppercase;letter-spacing:1px;}
+    .detail-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px;padding-top:13px;border-top:1px solid var(--bd);}
+    .empty-inline{font-size:.7rem;color:var(--td);padding:13px 0;line-height:1.7;}
+    .infobox{background:var(--s1);border:1px solid var(--bd);position:sticky;top:80px;}
+    .ib-title{font-family:var(--ffd);font-size:1.03rem;color:var(--a);padding:9px 11px;border-bottom:1px solid var(--bd);background:color-mix(in srgb,var(--a) 5%,transparent);text-align:center;line-height:1.3;}
+    .ib-cover{width:100%;display:block;cursor:pointer;opacity:.85;transition:opacity .2s;}.ib-cover:hover{opacity:1;}
+    .ib-no-img{width:100%;height:126px;display:flex;align-items:center;justify-content:center;font-size:3.5rem;opacity:.07;background:#050505;}
+    .ib-row{display:flex;border-bottom:1px solid var(--bd);}.ib-row:last-child{border-bottom:none;}
+    .ib-k{padding:6px 9px;font-size:.56rem;color:var(--a);min-width:92px;border-right:1px solid var(--bd);text-transform:uppercase;letter-spacing:1px;flex-shrink:0;display:flex;align-items:center;}
+    .ib-v{padding:6px 9px;font-size:.68rem;color:var(--tx);flex:1;display:flex;align-items:center;word-break:break-word;}
+    .char-cards{display:flex;flex-direction:column;gap:5px;}
+    .char-card{background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;gap:11px;padding:9px 13px;cursor:pointer;transition:border-color .2s,background .18s;}
+    .char-card:hover{border-color:var(--a);background:color-mix(in srgb,var(--a) 4%,var(--s2));}
+    .char-card-img{width:49px;height:49px;object-fit:cover;flex-shrink:0;opacity:.85;}
+    .char-card-ph{width:49px;height:49px;background:#080808;display:flex;align-items:center;justify-content:center;font-size:1.5rem;opacity:.15;flex-shrink:0;}
+    .char-card-info{flex:1;min-width:0;}.char-card-name{font-family:var(--ffd);font-size:1.06rem;color:#eee;}
+    .char-card-badges{display:flex;gap:4px;margin:2px 0;flex-wrap:wrap;}
+    .char-card-sum{font-size:.62rem;color:#666;line-height:1.5;}.char-card-arr{font-size:.88rem;color:var(--a);opacity:.45;flex-shrink:0;}
+    .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:5px;}
+    .gallery-thumb{position:relative;aspect-ratio:4/3;overflow:hidden;cursor:pointer;border:1px solid var(--bd);}
+    .gallery-thumb img{width:100%;height:100%;object-fit:cover;opacity:.8;transition:opacity .2s;}.gallery-thumb:hover img{opacity:1;}
+    .cover-lbl{position:absolute;bottom:3px;left:3px;font-size:.47rem;background:var(--a);color:#000;padding:1px 5px;letter-spacing:1px;}
+    /* ── ARTICLE IMAGE PLACEMENT ────────────────────── */
+    .article-block{margin-bottom:12px;}.article-block::after{content:'';display:table;clear:both;}
+    .article-h2{font-family:var(--ffd);font-size:1.12rem;color:var(--a);margin-top:20px;margin-bottom:9px;padding-bottom:4px;border-bottom:1px solid var(--bd);}
+    .article-p{margin-bottom:12px;line-height:1.9;}
+    .wiki-img{background:var(--s2);border:1px solid var(--bd);max-width:230px;}
+    .wiki-img img{width:100%;display:block;opacity:.9;}
+    .wiki-img-cap{font-size:.57rem;color:var(--td);padding:5px 8px;border-top:1px solid var(--bd);text-align:center;line-height:1.5;font-style:italic;}
+    .wiki-img-left{float:left;margin:3px 16px 10px 0;}
+    .wiki-img-right{float:right;margin:3px 0 10px 16px;}
+    .wiki-img-center{float:none;display:block;margin:14px auto;max-width:320px;}
+    /* ── ARTICLE EDITOR TOOLBAR ─────────────────────── */
+    .ae-strip{background:var(--s2);border:1px solid var(--a);border-left:2px solid var(--a);padding:11px 12px;margin-bottom:11px;}
+    .ae-strip-label{font-size:.56rem;color:var(--a);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;}
+    .ae-strip-row{display:flex;flex-wrap:wrap;gap:7px;}
+    .ae-thumb{width:60px;height:50px;overflow:hidden;cursor:pointer;border:2px solid var(--bd);position:relative;transition:border-color .15s,transform .12s;flex-shrink:0;}
+    .ae-thumb:hover{border-color:var(--a);transform:scale(1.05);}
+    .ae-thumb.sel{border-color:var(--a);box-shadow:0 0 0 1px var(--a);}
+    .ae-thumb img{width:100%;height:100%;object-fit:cover;opacity:.8;}
+    .ae-star{position:absolute;bottom:1px;right:2px;font-size:.48rem;color:var(--a);}
+    .ae-cfg{display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd);align-items:flex-start;flex-wrap:wrap;}
+    .ae-cfg-prev{width:68px;height:58px;object-fit:cover;border:1px solid var(--bd);flex-shrink:0;opacity:.85;}
+    .ae-cfg-right{flex:1;min-width:190px;}
+    /* ── COMMUNITY ─────────────────────────────────── */
+    .cb-block{background:var(--s2);border:1px solid var(--bd);padding:13px 15px;margin-bottom:24px;}
+    .cb-title{font-size:.57rem;letter-spacing:3px;text-transform:uppercase;color:var(--a);margin-bottom:7px;}
+    .cb-avg{font-family:var(--ffd);font-size:1.28rem;color:#ffcc44;margin-bottom:7px;}
+    .cb-cnt{font-size:.64rem;color:var(--td);font-family:var(--ffb);}
+    .cstar-row{display:flex;gap:4px;margin-top:4px;}
+    .cstar{font-size:1.55rem;cursor:pointer;color:#252530;transition:color .1s,transform .1s;}.cstar:hover{transform:scale(1.15);}.cstar.lit{color:#ffcc44;}
+    .cb-thanks{font-size:.71rem;color:var(--td);}
+    .rev-form{background:var(--s2);border:1px solid var(--bd);padding:13px 15px;margin-bottom:16px;}
+    .revs-list{display:flex;flex-direction:column;gap:9px;}
+    .rev-item{background:var(--s2);border:1px solid var(--bd);border-left:2px solid var(--bd);padding:11px 13px;transition:border-left-color .2s;}.rev-item:hover{border-left-color:var(--a);}
+    .rev-hdr{display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap;}
+    .rev-type{font-size:.54rem;padding:1px 7px;border:1px solid;text-transform:uppercase;letter-spacing:1px;}
+    .rev-date{font-size:.57rem;color:var(--td);}
+    .rev-text{font-size:.75rem;line-height:1.75;color:var(--tx);white-space:pre-wrap;word-break:break-word;}
+    .summary-block{background:var(--s2);border-left:2px solid var(--a);padding:11px 14px;font-size:.76rem;line-height:1.8;color:#999;margin-bottom:18px;}
+    .toc-box{background:var(--s1);border:1px solid var(--bd);padding:11px 14px;margin-bottom:18px;display:inline-block;min-width:175px;}
+    .toc-title{font-size:.57rem;letter-spacing:2px;text-transform:uppercase;color:var(--td);margin-bottom:7px;}
+    .toc-list{padding-left:15px;display:flex;flex-direction:column;gap:3px;}
+    .toc-list li{font-size:.68rem;}.toc-list a{color:var(--a);text-decoration:none;}.toc-list a:hover{text-decoration:underline;}
+    .char-article{font-size:.78rem;line-height:1.9;color:var(--tx);}
+    /* ── FORMS ─────────────────────────────────────── */
+    .form-page{padding:24px 20px;max-width:755px;margin:0 auto;width:100%;}
+    .form-ttl{font-family:var(--ffd);font-size:1.7rem;color:#fff;margin-bottom:16px;}
+    .unsaved-bar{font-size:.61rem;color:#ffcc44;background:rgba(255,204,0,.07);border:1px solid rgba(255,204,0,.2);padding:5px 12px;margin-bottom:11px;letter-spacing:1px;}
+    .form-tabs{display:flex;border-bottom:1px solid var(--bd);margin-bottom:16px;flex-wrap:wrap;}
+    .ftab{background:none;border:none;border-bottom:2px solid transparent;color:var(--td);font-family:var(--ffb);font-size:.66rem;padding:8px 13px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .15s;margin-bottom:-1px;}.ftab:hover{color:var(--tx);}.ftab.on{color:var(--a);border-bottom-color:var(--a);}
+    .form-body{display:flex;flex-direction:column;}
+    .frow{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+    .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:13px;}.fg label{font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--td);}
+    .tag-picker{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
+    .tpick{font-size:.56rem;padding:3px 7px;border:1px solid #252530;color:#555;text-transform:uppercase;letter-spacing:1px;cursor:pointer;transition:all .12s;background:transparent;font-family:var(--ffb);}.tpick:hover{color:#999;border-color:#444;}.tpick.on{border-color:var(--a);color:var(--a);background:color-mix(in srgb,var(--a) 10%,transparent);}
+    .stars{display:flex;align-items:center;gap:2px;margin-top:4px;}.star{font-size:1.08rem;cursor:pointer;color:#252530;transition:color .1s;}.star.lit{color:var(--a);}
+    .cf-row{display:flex;gap:7px;margin-bottom:7px;}
+    .form-acts{display:flex;gap:9px;margin-top:17px;padding-top:12px;border-top:1px solid var(--bd);flex-wrap:wrap;align-items:center;}
+    .char-edit-grid{display:grid;grid-template-columns:175px 1fr;gap:17px;}
+    .char-portrait-upload{width:100%;aspect-ratio:3/4;background:#080808;border:1px dashed #2a2a30;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color .2s;}.char-portrait-upload:hover{border-color:var(--a);}
+    .char-list-sm{display:flex;flex-direction:column;gap:4px;}.char-sm-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:var(--s1);border:1px solid var(--bd);font-size:.7rem;}
+    .img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:7px;}
+    .img-item{position:relative;aspect-ratio:4/3;overflow:hidden;background:#0a0a0a;border:1px solid var(--bd);}.img-item.cover{border-color:var(--a);}
+    .img-ov{position:absolute;inset:0;background:rgba(0,0,0,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;opacity:0;transition:opacity .2s;}.img-item:hover .img-ov{opacity:1;}
+    .img-btn{background:#111;border:1px solid #333;color:#ccc;font-size:.56rem;padding:3px 8px;cursor:pointer;font-family:var(--ffb);transition:all .12s;white-space:nowrap;}.img-btn:hover{border-color:var(--a);color:var(--a);}.img-btn.del:hover{border-color:var(--red)!important;color:var(--red)!important;}
+    .img-add{aspect-ratio:4/3;background:#080808;border:1px dashed #222;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;transition:border-color .2s;}.img-add:hover{border-color:var(--a);}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;display:flex;align-items:center;justify-content:center;}.overlay.lbx{z-index:2000;}
+    .spanel{background:#0d0d10;border:1px solid var(--a);width:90%;max-width:545px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--glow2);}
+    .spanel-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 17px;border-bottom:1px solid var(--bd);}
+    .spanel-title{font-family:var(--ffd);font-size:1.18rem;color:var(--a);letter-spacing:2px;}
+    .stabs{display:flex;border-bottom:1px solid var(--bd);}.stab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:var(--td);font-family:var(--ffb);font-size:.62rem;padding:9px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .15s;margin-bottom:-1px;}.stab:hover{color:var(--tx);}.stab.on{color:var(--a);border-bottom-color:var(--a);}
+    .spanel-bd{flex:1;overflow-y:auto;padding:17px;}
+    .sg{display:flex;flex-direction:column;gap:7px;}.sl{font-size:.57rem;letter-spacing:2px;text-transform:uppercase;color:var(--td);display:flex;align-items:center;gap:5px;}.sl b{color:var(--a);}
+    .sr{display:grid;grid-template-columns:1fr 1fr;gap:10px;}.sub-sg{background:var(--s1);border:1px solid var(--bd);padding:11px;display:flex;flex-direction:column;gap:9px;}
+    .schk{display:flex;align-items:center;font-size:.68rem;color:var(--tx);cursor:pointer;gap:6px;}
+    .anim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}.anim-opt{background:#0d0d10;border:1px solid var(--bd);color:var(--td);font-family:var(--ffb);font-size:.66rem;padding:8px 5px;cursor:pointer;transition:all .15s;text-align:center;}.anim-opt:hover{border-color:#444;color:var(--tx);}.anim-opt.on{border-color:var(--a);color:var(--a);background:color-mix(in srgb,var(--a) 8%,transparent);}
+    .font-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}.font-opt{background:#0d0d10;border:1px solid var(--bd);color:var(--td);padding:9px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:flex-start;gap:2px;}.font-opt:hover{border-color:#444;color:var(--tx);}.font-opt.on{border-color:var(--a);color:var(--a);background:color-mix(in srgb,var(--a) 8%,transparent);}
+    input,select,textarea{background:#0c0c0f;border:1px solid var(--bd);color:var(--tx);font-family:var(--ffb);font-size:.76rem;padding:8px 10px;outline:none;transition:border .2s;width:100%;}
+    input:focus,select:focus,textarea:focus{border-color:var(--a);}input::placeholder,textarea::placeholder{color:var(--td);}
+    input[type=range]{padding:0;height:4px;accent-color:var(--a);cursor:pointer;}input[type=color]{padding:2px;border:1px solid var(--bd);cursor:pointer;background:none;}input[type=checkbox]{width:auto;accent-color:var(--a);cursor:pointer;}
+    select{cursor:pointer;}select option{background:#111;}textarea{resize:vertical;min-height:80px;line-height:1.7;}
+    .btn{font-family:var(--ffb);font-size:.7rem;padding:7px 14px;border:1px solid;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .15s;background:transparent;white-space:nowrap;}
+    .btn.sm{font-size:.6rem;padding:4px 9px;}
+    .btn.primary{color:var(--a);border-color:var(--a);}.btn.primary:hover{background:var(--a);color:#000;}
+    .btn.ghost{color:var(--td);border-color:var(--bd);}.btn.ghost:hover{color:var(--tx);border-color:#444;}
+    .btn.danger{color:var(--red);border-color:var(--red);}.btn.danger:hover{background:var(--red);color:#000;}
+    .btn:disabled{opacity:.3;cursor:not-allowed;}
+    .modal{background:#0e0e12;border:1px solid var(--a);padding:25px;max-width:355px;width:90%;text-align:center;box-shadow:var(--glow2);}
+    .modal h3{font-family:var(--ffd);font-size:1.38rem;color:var(--a);margin-bottom:8px;}.modal p{font-size:.68rem;color:var(--td);line-height:1.65;}
+    .modal-btns{display:flex;gap:9px;justify-content:center;margin-top:15px;}
+    .toast{font-size:.68rem;padding:9px 15px;border:1px solid;letter-spacing:.5px;max-width:295px;animation:toastIn .2s ease;}
+    @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .t-success{background:color-mix(in srgb,#39ff14 8%,#0c0c0f);border-color:#39ff1455;color:#39ff14;}
+    .t-info{background:color-mix(in srgb,#4fc3f7 8%,#0c0c0f);border-color:#4fc3f755;color:#4fc3f7;}
+    .t-error{background:color-mix(in srgb,#ff3333 8%,#0c0c0f);border-color:#ff333355;color:#ff3333;}
+    .empty-state{text-align:center;padding:52px 20px;color:var(--td);}.empty-big{font-family:var(--ffd);font-size:2.7rem;color:#141418;letter-spacing:4px;}.empty-msg{margin-top:11px;font-size:.7rem;}
+    .not-found{text-align:center;padding:68px 20px;}.not-found-code{font-family:var(--ffd);font-size:4.8rem;color:#1a1a1f;letter-spacing:6px;}.not-found-msg{font-size:.73rem;color:var(--td);margin-top:10px;margin-bottom:18px;}
+    footer{border-top:1px solid var(--bd);padding:13px 20px;display:flex;align-items:center;justify-content:space-between;font-size:.57rem;color:var(--td);background:rgba(0,0,0,.55);flex-wrap:wrap;gap:7px;}
+    .footer-brand{font-family:var(--ffd);font-size:.86rem;color:var(--a);cursor:pointer;}.footer-brand:hover{opacity:.8;}
+    .hint{font-size:.58rem;color:var(--td);line-height:1.5;}.dim{color:var(--td);}
+    /* ── EPISODES ─────────────────────────────────────── */
+    .ep-list{display:flex;flex-direction:column;gap:4px;}
+    .ep-row{background:var(--s2);border:1px solid var(--bd);display:flex;align-items:flex-start;gap:11px;padding:10px 14px;cursor:pointer;transition:border-color .18s,background .15s;}
+    .ep-row:hover{border-color:var(--a);background:color-mix(in srgb,var(--a) 4%,var(--s2));}
+    .ep-num{font-family:var(--ffd);font-size:1.15rem;color:var(--a);min-width:36px;padding-top:1px;opacity:.65;flex-shrink:0;}
+    .ep-info{flex:1;min-width:0;}
+    .ep-title{font-family:var(--ffd);font-size:1.05rem;color:#eee;margin-bottom:3px;}
+    .ep-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:.6rem;color:var(--td);margin-bottom:3px;}
+    .ep-sum{font-size:.65rem;color:#666;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .ep-arr{font-size:.88rem;color:var(--a);opacity:.4;flex-shrink:0;padding-top:2px;}
+    @media(max-width:900px){.page-wrap{grid-template-columns:1fr;}.page-sidebar{display:none;}.detail-layout{grid-template-columns:1fr;}.infobox{position:static;}.char-edit-grid,.frow,.sr,.font-grid{grid-template-columns:1fr;}.topbar-brand{min-width:auto;padding-right:14px;}.brand-name{font-size:1.18rem;}.nav-tab{padding:0 11px;font-size:.6rem;}.page-content,.detail-page,.form-page{padding:15px 13px;}.anim-grid{grid-template-columns:repeat(2,1fr);}.wiki-img-left,.wiki-img-right{float:none;display:block;margin:10px auto;}}
+    @media(max-width:580px){.card-grid{grid-template-columns:1fr;}.char-grid{grid-template-columns:1fr 1fr;}.topbar{padding:0 11px;}.topbar-right .stats-text{display:none;}}
+  `;
+
+  return(<>
+    <style>{CSS}</style>
+    <BgLayer s={settings}/>
+    <div className="wiki-shell">
+      <nav className="topbar">
+        <div className="topbar-brand" onClick={goHome} title="Return to home">
+          <div className="brand-name">ANALOG HORROR</div>
+          <div className="brand-sub">Community Archive</div>
+        </div>
+        <div className="topbar-nav">
+          <button className={"nav-tab"+(section==="series"?" on":"")} onClick={()=>{setSection("series");setNav({page:"series-list"});}}>Series <span className="nav-count">{series.length}</span></button>
+          <button className={"nav-tab"+(section==="characters"?" on":"")} onClick={()=>{setSection("characters");setNav({page:"char-list"});}}>Characters <span className="nav-count">{chars.length}</span></button>
+        </div>
+        <div className="topbar-right">
+          <span className="stats-text">{series.length} series · {chars.length} chars</span>
+          {isAdmin&&<span className="admin-badge">🔓 ADMIN</span>}
+          {isAdmin?<button className="btn ghost sm" onClick={adminLogout}>Logout</button>:<button className="btn ghost sm" onClick={()=>setShowLogin(true)} title="Admin login">🔒</button>}
+          <button className="btn ghost sm" onClick={()=>setShowSettings(true)} title="Appearance">⚙</button>
+        </div>
+      </nav>
+
+      {nav.page==="series-list"&&<div className="page-wrap">
+        <div className="page-content">
+          <div className="section-header"><div><span className="section-title">Series Archive</span><span className="section-count">{filtSer.length} of {series.length}</span></div>{isAdmin&&<button className="btn primary" onClick={()=>setNav({page:"series-edit",id:null})}>+ New Series</button>}</div>
+          <div className="controls">
+            <input className="ctrl-search" placeholder="Search title, creator, tags…" value={sSearch} onChange={e=>setSSearch(e.target.value)}/>
+            <select value={sTag} onChange={e=>setSTag(e.target.value)} style={{width:"auto"}}><option value="">All Tags</option>{usedTags.map(t=><option key={t}>{t}</option>)}</select>
+            <select value={sStat} onChange={e=>setSStat(e.target.value)} style={{width:"auto"}}><option value="">All Status</option>{SS.map(s=><option key={s}>{s}</option>)}</select>
+            {(sSearch||sTag||sStat)&&<button className="btn ghost sm" onClick={()=>{setSSearch("");setSTag("");setSStat("");}}>✕ Clear</button>}
+          </div>
+          {filtSer.length===0?<div className="empty-state"><div className="empty-big">NO SIGNAL</div><div className="empty-msg">{series.length===0?"Archive is empty. Log in as admin to add series.":"No results."}</div></div>
+          :<div className="card-grid">{filtSer.sort((a,b)=>a.title.localeCompare(b.title)).map(s=>{
+            const cover=s.images&&(s.images.find(i=>i.iscover)||s.images[0]);
+            const sc2=chars.filter(c=>c.seriesId===s.id).length;
+            return(<div key={s.id} className="s-card" onClick={()=>setNav({page:"series-detail",id:s.id})}>
+              {cover&&<img src={cover.data} alt="" className="s-card-cover"/>}
+              <div className="s-card-body">
+                <div className="s-card-title">{s.title}</div>
+                <div className="s-card-meta"><span style={{color:S_CLR[s.status]||"#888"}}><span className="dot" style={{background:S_CLR[s.status]||"#888"}}/>{s.status}</span><span>{s.creator}</span><span>{s.year}</span>{s.rating&&<span style={{color:"#ffcc44"}}>★ {s.rating}</span>}{sc2>0&&<span style={{color:"var(--a)"}}>{sc2} char{sc2!==1?"s":""}</span>}</div>
+                <div className="s-card-desc">{s.description}</div>
+                <div className="tags-row">{(s.tags||[]).slice(0,4).map(t=><span key={t} className={"tag"+(sTag===t?" on":"")} onClick={e=>{e.stopPropagation();setSTag(sTag===t?"":t);}}>{t}</span>)}{(s.tags||[]).length>4&&<span className="tag">+{s.tags.length-4}</span>}</div>
+              </div>
+            </div>);
+          })}</div>}
+        </div>
+        <aside className="page-sidebar">
+          <div className="sb-widget"><div className="sb-widget-title">Browse by Tag</div><div className="sb-widget-body"><div className="sb-tag-cloud">{usedTags.slice(0,30).map(t=><span key={t} className={"tag"+(sTag===t?" on":"")} onClick={()=>setSTag(sTag===t?"":t)}>{t}</span>)}{usedTags.length===0&&<span className="dim" style={{fontSize:".67rem"}}>No tags yet.</span>}</div></div></div>
+          <div className="sb-widget"><div className="sb-widget-title">Filter by Status</div><div className="sb-widget-body" style={{display:"flex",flexDirection:"column",gap:4}}>{SS.map(st=>{const cnt=series.filter(s=>s.status===st).length;return cnt>0?(<div key={st} style={{display:"flex",justifyContent:"space-between",cursor:"pointer",padding:"2px 0"}} onClick={()=>setSStat(sStat===st?"":st)}><span style={{fontSize:".66rem",color:S_CLR[st]||"#888",display:"flex",alignItems:"center",gap:5}}><span className="dot" style={{background:S_CLR[st]||"#888"}}/>{st}</span><span style={{fontSize:".58rem",color:"var(--td)"}}>{cnt}</span></div>):null;})}</div></div>
+          <div className="sb-widget"><div className="sb-widget-title">Recent Characters</div><div className="sb-widget-body"><div className="sb-recent">{chars.slice(-5).reverse().map(ch=>{const s=series.find(s=>s.id===ch.seriesId);return(<div key={ch.id} className="sb-recent-item" onClick={()=>setNav({page:"char-detail",id:ch.id})}><span className="sb-rname">{ch.name}</span>{s&&<span className="sb-rmeta">↗ {s.title}</span>}</div>);})}{chars.length===0&&<span className="dim" style={{fontSize:".67rem"}}>No characters yet.</span>}</div></div></div>
+        </aside>
+      </div>}
+
+      {nav.page==="char-list"&&<div className="page-wrap">
+        <div className="page-content">
+          <div className="section-header"><div><span className="section-title">Characters</span><span className="section-count">{filtChr.length} of {chars.length}</span></div>{isAdmin&&<button className="btn primary" onClick={()=>setNav({page:"char-edit",id:null,returnTo:{}})}>+ New Character</button>}</div>
+          <div className="controls">
+            <input className="ctrl-search" placeholder="Search characters, aliases…" value={cSearch} onChange={e=>setCSearch(e.target.value)}/>
+            <select value={cSer} onChange={e=>setCSer(e.target.value)} style={{width:"auto"}}><option value="">All Series</option>{series.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}</select>
+            <select value={cType} onChange={e=>setCType(e.target.value)} style={{width:"auto"}}><option value="">All Types</option>{usedTypes.map(t=><option key={t}>{t}</option>)}</select>
+            {(cSearch||cSer||cType)&&<button className="btn ghost sm" onClick={()=>{setCSearch("");setCSer("");setCType("");}}>✕ Clear</button>}
+          </div>
+          {filtChr.length===0?<div className="empty-state"><div className="empty-big">NO SIGNAL</div><div className="empty-msg">{chars.length===0?"No characters yet.":"No characters match."}</div></div>
+          :<div className="char-grid">{filtChr.sort((a,b)=>a.name.localeCompare(b.name)).map(ch=>{const s=series.find(s=>s.id===ch.seriesId);return(<div key={ch.id} className="ch-card" onClick={()=>setNav({page:"char-detail",id:ch.id})}>{ch.image?<img src={ch.image} alt={ch.name} className="ch-card-img"/>:<div className="ch-card-noimg">?</div>}<div className="ch-card-body"><div className="ch-card-name">{ch.name}</div>{s&&<div className="ch-card-series">↗ {s.title}</div>}<div className="ch-card-badges">{ch.type&&<span className="badge">{ch.type}</span>}{ch.status&&<span className="badge" style={{borderColor:C_CLR[ch.status]||"#888",color:C_CLR[ch.status]||"#888"}}>{ch.status}</span>}</div>{ch.summary&&<div className="ch-card-sum">{ch.summary}</div>}</div></div>);})}</div>}
+        </div>
+        <aside className="page-sidebar">
+          <div className="sb-widget"><div className="sb-widget-title">Filter by Series</div><div className="sb-widget-body"><div className="sb-recent">{series.map(s=>{const c=chars.filter(c=>c.seriesId===s.id).length;return c>0?(<div key={s.id} className="sb-recent-item" onClick={()=>setCSer(cSer===s.id?"":s.id)}><span className="sb-rname" style={{color:cSer===s.id?"var(--a)":"inherit"}}>{s.title}</span><span className="sb-rmeta">{c} char{c!==1?"s":""}</span></div>):null;})}{series.length===0&&<span className="dim" style={{fontSize:".67rem"}}>No series.</span>}</div></div></div>
+          <div className="sb-widget"><div className="sb-widget-title">Filter by Type</div><div className="sb-widget-body"><div className="sb-tag-cloud">{usedTypes.map(t=><span key={t} className={"tag"+(cType===t?" on":"")} onClick={()=>setCType(cType===t?"":t)}>{t}</span>)}{usedTypes.length===0&&<span className="dim" style={{fontSize:".67rem"}}>None yet.</span>}</div></div></div>
+        </aside>
+      </div>}
+
+      {nav.page==="series-detail"&&(curSer
+        ?<SeriesDetail series={curSer} chars={chars} eps={eps} isAdmin={isAdmin} toast={addToast}
+            onEdit={()=>setNav({page:"series-edit",id:curSer.id})}
+            onDelete={()=>setConfirmDel({type:"series",id:curSer.id})}
+            onBack={()=>setNav({page:"series-list"})}
+            onTagClick={t=>{setSTag(t);setNav({page:"series-list"});}}
+            onCharClick={id=>setNav({page:"char-detail",id})}
+            onAddChar={sid=>setNav({page:"char-edit",id:null,returnTo:{seriesId:sid}})}
+            onAddEp={sid=>setNav({page:"ep-edit",id:null,returnTo:{seriesId:sid}})}
+            onEpClick={id=>setNav({page:"ep-detail",id})}
+          />
+        :<div className="not-found"><div className="not-found-code">404</div><div className="not-found-msg">Series not found.</div><button className="btn ghost" onClick={()=>setNav({page:"series-list"})}>← Back</button></div>
+      )}
+
+      {nav.page==="series-edit"&&isAdmin&&<SeriesForm series={nav.id?curSer:newSer()} allSeries={series} characters={chars} isNew={!nav.id} toast={addToast} onSave={saveSer} onCancel={()=>setNav(nav.id?{page:"series-detail",id:nav.id}:{page:"series-list"})}/>}
+
+      {nav.page==="char-detail"&&(curChr
+        ?<CharDetail char={curChr} allSeries={series} allEps={eps} isAdmin={isAdmin}
+            onEdit={()=>setNav({page:"char-edit",id:curChr.id})}
+            onDelete={()=>setConfirmDel({type:"char",id:curChr.id})}
+            onBack={()=>{const s=series.find(s=>s.id===curChr.seriesId);setNav(s?{page:"series-detail",id:s.id}:{page:"char-list"});}}
+            onSeriesClick={sid=>setNav({page:"series-detail",id:sid})}
+            onEpClick={id=>setNav({page:"ep-detail",id})}
+          />
+        :<div className="not-found"><div className="not-found-code">404</div><div className="not-found-msg">Character not found.</div><button className="btn ghost" onClick={()=>setNav({page:"char-list"})}>← Back</button></div>
+      )}
+
+      {nav.page==="char-edit"&&isAdmin&&<CharForm char={nav.id?curChr:newChr(nav.returnTo&&nav.returnTo.seriesId)} allSeries={series} isNew={!nav.id} toast={addToast} onSave={saveChr} onCancel={()=>{if(nav.id)setNav({page:"char-detail",id:nav.id});else if(nav.returnTo&&nav.returnTo.seriesId)setNav({page:"series-detail",id:nav.returnTo.seriesId});else setNav({page:"char-list"});}}/>}
+
+      {nav.page==="ep-detail"&&(curEp
+        ?<EpisodeDetail ep={curEp} allSeries={series} allChars={chars} isAdmin={isAdmin}
+            onEdit={()=>setNav({page:"ep-edit",id:curEp.id})}
+            onDelete={()=>setConfirmDel({type:"ep",id:curEp.id})}
+            onBack={()=>setNav(curEp.seriesId?{page:"series-detail",id:curEp.seriesId}:{page:"series-list"})}
+            onCharClick={id=>setNav({page:"char-detail",id})}
+          />
+        :<div className="not-found"><div className="not-found-code">404</div><div className="not-found-msg">Episode not found.</div><button className="btn ghost" onClick={()=>setNav({page:"series-list"})}>← Back</button></div>
+      )}
+
+      {nav.page==="ep-edit"&&isAdmin&&<EpisodeForm ep={nav.id?curEp:newEp(nav.returnTo&&nav.returnTo.seriesId)} allSeries={series} allChars={chars} isNew={!nav.id} toast={addToast} onSave={saveEp} onCancel={()=>{if(nav.id)setNav({page:"ep-detail",id:nav.id});else if(nav.returnTo&&nav.returnTo.seriesId)setNav({page:"series-detail",id:nav.returnTo.seriesId});else setNav({page:"series-list"});}}/>}
+
+      {confirmDel&&<div className="overlay" onClick={()=>setConfirmDel(null)}><div className="modal" onClick={e=>e.stopPropagation()}><h3>CONFIRM DELETE</h3><p>{confirmDel.type==="series"?"This will permanently delete this series and all its episodes. Linked characters will be unlinked.":confirmDel.type==="ep"?"This will permanently delete this episode page.":"This will permanently delete this character page."}</p><div className="modal-btns"><button className="btn danger" onClick={()=>confirmDel.type==="series"?delSer(confirmDel.id):confirmDel.type==="ep"?delEp(confirmDel.id):delChr(confirmDel.id)}>Delete Permanently</button><button className="btn ghost" onClick={()=>setConfirmDel(null)}>Cancel</button></div></div></div>}
+
+      {showLogin&&<AdminLogin onLogin={adminLogin} onClose={()=>setShowLogin(false)}/>}
+      {showSettings&&<SettingsPanel s={settings} onChange={setSettings} onClose={()=>setShowSettings(false)}/>}
+
+      <footer>
+        <span className="footer-brand" onClick={goHome}>ANALOG HORROR ARCHIVE</span>
+        <span>{series.length} series · {chars.length} characters · {eps.length} episodes</span>
+        <span style={{opacity:.35}}>{isAdmin?"Admin mode · ":""}Esc = back · click title = home</span>
+      </footer>
+    </div>
+    <ToastBar toasts={toasts}/>
+  </>);
+}
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
