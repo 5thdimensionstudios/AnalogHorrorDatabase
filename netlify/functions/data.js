@@ -1,4 +1,3 @@
-
 const OWNER = process.env.REPO_OWNER;
 const REPO  = process.env.REPO_NAME;
 const PATH  = process.env.DB_FILE_PATH || "data/database.json";
