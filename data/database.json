@@ -46,5 +46,10 @@
     "phosphorColor": "#00ff41",
     "displayFont": "VT323",
     "bodyFont": "ShareTechMono"
+  },
+  "ahw_r_s100": {
+    "count": 1,
+    "total": 5,
+    "avg": 5
   }
 }
