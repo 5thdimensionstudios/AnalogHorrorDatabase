@@ -65,14 +65,89 @@ function moderate(raw) {
 }
 
 // ── STORAGE ───────────────────────────────────────────────────────
-async function sGet(k,sh=false){try{if(window.storage){const r=await window.storage.get(k,sh);return r?JSON.parse(r.value):null;}return JSON.parse(localStorage.getItem((sh?"sh:":"")+k))||null;}catch{return null;}}
-async function sSet(k,v,sh=false){try{const s=JSON.stringify(v);if(window.storage)await window.storage.set(k,s,sh);else localStorage.setItem((sh?"sh:":"")+k,s);}catch{}}
-function ssGet(k){try{return JSON.parse(sessionStorage.getItem(k)||"null");}catch{return null;}}
-function ssSet(k,v){try{sessionStorage.setItem(k,JSON.stringify(v));}catch{}}
-function hasReviewed(id){return(ssGet("ahw_rev")||[]).includes(id);}
-function markReviewed(id){ssSet("ahw_rev",[...new Set([...(ssGet("ahw_rev")||[]),id])]);}
-function hasRated(id){return(ssGet("ahw_rated")||[]).includes(id);}
-function markRated(id){ssSet("ahw_rated",[...new Set([...(ssGet("ahw_rated")||[]),id])]);}
+// ── STORAGE ───────────────────────────────────────────────────────
+async function sGet(k, sh = false) {
+  // Try the Netlify function (shared DB) first
+  try {
+    const res = await fetch("/.netlify/functions/data");
+    if (res.ok) {
+      const db = await res.json();
+      if (db && Object.prototype.hasOwnProperty.call(db, k)) return db[k];
+      // if key missing in remote DB, fall back to local below
+    }
+  } catch (e) {
+    // network/func failed — fall back to local storage
+  }
+
+  // Fallback: original local/session storage behavior
+  try {
+    if (window.storage) {
+      const r = await window.storage.get(k, sh);
+      return r ? JSON.parse(r.value) : null;
+    }
+    return JSON.parse(localStorage.getItem((sh ? "sh:" : "") + k)) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function sSet(k, v, sh = false) {
+  // Try to save to Netlify function (read-modify-write of full DB)
+  try {
+    // read existing DB
+    const r = await fetch("/.netlify/functions/data");
+    let db = {};
+    if (r.ok) {
+      db = await r.json();
+      if (!db || typeof db !== "object") db = {};
+    }
+    // update key
+    db[k] = v;
+    // write back
+    const w = await fetch("/.netlify/functions/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(db),
+    });
+    if (w.ok) return; // saved remotely — done
+    // if POST failed, fall through to local fallback
+  } catch (e) {
+    // remote save failed — fall back to local
+  }
+
+  // Fallback: original local/sessionStorage behavior
+  try {
+    const s = JSON.stringify(v);
+    if (window.storage) await window.storage.set(k, s, sh);
+    else localStorage.setItem((sh ? "sh:" : "") + k, s);
+  } catch {}
+}
+
+function ssGet(k) {
+  try {
+    return JSON.parse(sessionStorage.getItem(k) || "null");
+  } catch {
+    return null;
+  }
+}
+function ssSet(k, v) {
+  try {
+    sessionStorage.setItem(k, JSON.stringify(v));
+  } catch {}
+}
+function hasReviewed(id) {
+  return (ssGet("ahw_rev") || []).includes(id);
+}
+function markReviewed(id) {
+  ssSet("ahw_rev", [...new Set([...(ssGet("ahw_rev") || []), id])]);
+}
+function hasRated(id) {
+  return (ssGet("ahw_rated") || []).includes(id);
+}
+function markRated(id) {
+  ssSet("ahw_rated", [...new Set([...(ssGet("ahw_rated") || []), id])]);
+}
+// ─────────────────────────────────────────────────────────────────
 
 // ── TOASTS ────────────────────────────────────────────────────────
 function useToasts(){
