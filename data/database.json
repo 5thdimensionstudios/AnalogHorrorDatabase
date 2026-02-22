@@ -317,6 +317,22 @@
       "characterIds": [],
       "images": [],
       "customFields": []
+    },
+    {
+      "id": "e316",
+      "seriesId": "s101",
+      "title": "Entry 16",
+      "episodeNumber": "17",
+      "airDate": "",
+      "duration": "",
+      "videoUrl": "",
+      "summary": "",
+      "synopsis": "",
+      "notes": "",
+      "castNotes": "",
+      "characterIds": [],
+      "images": [],
+      "customFields": []
     }
   ],
   "ahw_settings": {
