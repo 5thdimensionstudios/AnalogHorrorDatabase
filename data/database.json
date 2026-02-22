@@ -82,6 +82,21 @@
         }
       ],
       "customFields": []
+    },
+    {
+      "id": "c201",
+      "seriesId": "s101",
+      "name": "Jay Merrick",
+      "type": "Character",
+      "status": "Deceased",
+      "aliases": "The Uploader",
+      "firstAppearance": "Entry #1",
+      "voicedBy": "Troy Wagner",
+      "summary": "",
+      "article": "",
+      "image": null,
+      "images": [],
+      "customFields": []
     }
   ],
   "ahw_eps": [
