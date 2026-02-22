@@ -65,17 +65,17 @@ function moderate(raw) {
 }
 
 // ── STORAGE ───────────────────────────────────────────────────────
-// In-memory cache: the DB is loaded ONCE from GitHub via Netlify function,
-// then all reads/writes hit this cache. Saves POST the full DB back.
-let _dbCache = null;       // null = not loaded yet
-let _dbSaveTimer = null;   // debounce timer for saves
+// Single fetch on load, in-memory cache, debounced saves.
+// Cache is cleared after every save so reloads always get fresh data.
+const API_URL = "/api/data";
+let _dbCache = null;
+let _dbSaveTimer = null;
 
 async function _loadDb() {
   if (_dbCache !== null) return _dbCache;
   try {
-    const res = await fetch("/.netlify/functions/data");
-    if (res.ok) { _dbCache = await res.json(); }
-    else { _dbCache = {}; }
+    const res = await fetch(API_URL, { cache: "no-store" });
+    _dbCache = res.ok ? await res.json() : {};
   } catch { _dbCache = {}; }
   return _dbCache;
 }
@@ -83,15 +83,16 @@ async function _loadDb() {
 async function _flushDb() {
   if (!_dbCache) return;
   try {
-    await fetch("/.netlify/functions/data", {
+    await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(_dbCache)
     });
+    // Clear cache after save so next load fetches fresh from GitHub
+    _dbCache = null;
   } catch (e) { console.warn("DB save failed:", e); }
 }
 
-// Debounced save — batches rapid writes into one network request
 function _scheduleSave() {
   if (_dbSaveTimer) clearTimeout(_dbSaveTimer);
   _dbSaveTimer = setTimeout(_flushDb, 600);
@@ -108,7 +109,6 @@ async function sSet(k, v) {
   _scheduleSave();
 }
 
-// For loading all keys at once on startup (one fetch total)
 async function sGetAll(keys) {
   const db = await _loadDb();
   return keys.map(k => (db && k in db) ? db[k] : null);
@@ -818,7 +818,6 @@ function App(){
   useEffect(()=>{
     (async()=>{
       const [sv,cv,ev,st] = await sGetAll(["ahw_series","ahw_chars","ahw_eps","ahw_settings"]);
-      // Use server data if it exists, otherwise fall back to SEED data
       const seriesData = (sv && sv.length > 0) ? sv : SEED_SERIES;
       const charsData  = (cv && cv.length > 0) ? cv : SEED_CHARS;
       const epsData    = (ev && ev.length > 0) ? ev : SEED_EPS;
@@ -881,13 +880,13 @@ function App(){
     @import url('https://fonts.googleapis.com/css2?family=${df.import}&family=${bf.import}&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     :root{--a:${settings.accentColor};--bg:${settings.bgColor};--s1:#0b0b0e;--s2:#111115;--bd:#1e1e24;--tx:#c8c8d0;--td:#55555f;--red:#ff3333;--ffd:'${df.label}',monospace;--ffb:'${bf.label}',monospace;--glow:${settings.accentGlow?"0 0 20px color-mix(in srgb,var(--a) 40%,transparent)":"none"};--glow2:${settings.accentGlow?"0 0 40px color-mix(in srgb,var(--a) 18%,transparent)":"none"};}
-    html,body{height:100%;background:var(--bg);}body{color:var(--tx);font-family:var(--ffb);overflow-x:hidden;font-size:15px;}code{background:#111;padding:1px 5px;border:1px solid var(--bd);font-size:.85em;}
+    html,body{height:100%;background:var(--bg);}
     .loading-screen{position:fixed;inset:0;background:#060608;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;}
-    .loading-title{font-family:'VT323',monospace;font-size:2.2rem;color:#ff2222;letter-spacing:4px;text-shadow:0 0 20px rgba(255,34,34,0.5);animation:pulse 1.5s ease-in-out infinite;}
+    .loading-title{font-family:'VT323',monospace;font-size:2.2rem;color:#ff2222;letter-spacing:4px;text-shadow:0 0 20px rgba(255,34,34,0.5);animation:lpulse 1.5s ease-in-out infinite;}
     .loading-bar{width:220px;height:2px;background:#1e1e24;overflow:hidden;}
-    .loading-fill{height:100%;background:#ff2222;animation:loadbar 1.8s ease-in-out infinite;box-shadow:0 0 8px #ff2222;}
-    @keyframes loadbar{0%{width:0;margin-left:0}60%{width:100%;margin-left:0}100%{width:0;margin-left:100%}}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+    .loading-fill{height:100%;background:#ff2222;animation:lbar 1.8s ease-in-out infinite;box-shadow:0 0 8px #ff2222;}
+    @keyframes lbar{0%{width:0;margin-left:0}60%{width:100%;margin-left:0}100%{width:0;margin-left:100%}}
+    @keyframes lpulse{0%,100%{opacity:1}50%{opacity:0.5}}body{color:var(--tx);font-family:var(--ffb);overflow-x:hidden;font-size:15px;}code{background:#111;padding:1px 5px;border:1px solid var(--bd);font-size:.85em;}
     .scanlines{position:fixed;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,var(--slo,.06)) 2px,rgba(0,0,0,var(--slo,.06)) 4px);}
     .static-noise{position:fixed;inset:0;pointer-events:none;z-index:51;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");background-size:200px;opacity:var(--sto,.3);mix-blend-mode:screen;animation:sf .08s steps(1) infinite;}
     @keyframes sf{0%,100%{background-position:0 0}25%{background-position:40px 10px}50%{background-position:-20px 30px}75%{background-position:15px -15px}}
@@ -1098,13 +1097,8 @@ function App(){
 
   return(<>
     <style>{CSS}</style>
-    {!loaded && (
-      <div className="loading-screen">
-        <div className="loading-title">ANALOG HORROR ARCHIVE</div>
-        <div className="loading-bar"><div className="loading-fill"/></div>
-      </div>
-    )}
-    {loaded && <><BgLayer s={settings}/>
+    {!loaded&&<div className="loading-screen"><div className="loading-title">ANALOG HORROR ARCHIVE</div><div className="loading-bar"><div className="loading-fill"/></div></div>}
+    {loaded&&<><BgLayer s={settings}/>
     <div className="wiki-shell">
       <nav className="topbar">
         <div className="topbar-brand" onClick={goHome} title="Return to home">
