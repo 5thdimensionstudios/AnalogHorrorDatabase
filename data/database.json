@@ -27,23 +27,7 @@
       "tagsInput": ""
     }
   ],
-  "ahw_chars": [
-    {
-      "id": "c1",
-      "seriesId": "s2",
-      "name": "Bon",
-      "type": "Entity",
-      "status": "Active",
-      "aliases": "The Rabbit, Bon the Bunny",
-      "firstAppearance": "The Walten Files 1",
-      "image": null,
-      "images": [],
-      "summary": "The main animatronic rabbit mascot of Bon's Burgers. Possessed by an unknown force, Bon is the central threat of the series.",
-      "article": "Bon is the titular animatronic rabbit and primary antagonist of The Walten Files. Originally built as the mascot of Bon's Burgers, a family restaurant chain owned by Felix Kranken and Jack Walten, Bon became the vessel for something deeply wrong.\n\n== Appearance ==\nBon's design is that of a large anthropomorphic rabbit, predominantly white with black eyes and a wide, unsettling grin. The animatronic is capable of movement far beyond its normal parameters.\n\n== Role in the Series ==\nThroughout the series, Bon is shown pursuing employees and visitors to the abandoned restaurant. Its connection to the souls of the missing Walten family is heavily implied.\n\n== Reception ==\nBon is widely considered one of the most iconic figures in the analog horror genre.",
-      "voicedBy": "Martin Walls",
-      "customFields": []
-    }
-  ],
+  "ahw_chars": [],
   "ahw_eps": [],
   "ahw_settings": {
     "bgAnimation": "minimal",
