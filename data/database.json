@@ -228,14 +228,17 @@
       "seriesId": "s101",
       "title": "Entry #4",
       "episodeNumber": "5",
-      "airDate": "",
-      "duration": "",
-      "videoUrl": "",
-      "summary": "",
-      "synopsis": "",
+      "airDate": "June 25, 2009",
+      "duration": "0:46",
+      "videoUrl": "https://www.youtube.com/watch?v=yBNQZvOkSCw&list=PLWgB5Nf3Hq3t2quS0ea-9FvTtEzXWfljF&index=5",
+      "summary": "Alex wanders a deserted playground at night and encounters The Operator among the swings.",
+      "synopsis": "Alex films himself walking through an abandoned playground at night. The clip has no audio — Jay suspects it was removed intentionally. A swing begins moving on its own with no wind to account for it, frightening Alex. The Operator appears briefly at the edge of the frame. Alex runs, looking back repeatedly. The camera falls as he does. The clip ends there. Jay notes the Operator appears to be moving in this footage, advancing rather than standing still.",
       "notes": "",
       "castNotes": "",
-      "characterIds": [],
+      "characterIds": [
+        "c200",
+        "c202"
+      ],
       "images": [],
       "customFields": []
     },
