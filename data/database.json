@@ -173,6 +173,22 @@
       "characterIds": [],
       "images": [],
       "customFields": []
+    },
+    {
+      "id": "e307",
+      "seriesId": "s101",
+      "title": "Entry 7",
+      "episodeNumber": "8",
+      "airDate": "",
+      "duration": "",
+      "videoUrl": "",
+      "summary": "",
+      "synopsis": "",
+      "notes": "",
+      "castNotes": "",
+      "characterIds": [],
+      "images": [],
+      "customFields": []
     }
   ],
   "ahw_settings": {
