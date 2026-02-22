@@ -60,7 +60,23 @@
       "tagsInput": "Found Footage, ARG, Psychological, Creepypasta, Internet, Series"
     }
   ],
-  "ahw_chars": [],
+  "ahw_chars": [
+    {
+      "id": "c200",
+      "seriesId": "s101",
+      "name": "Alex Kralie",
+      "type": "Character",
+      "status": "Deceased",
+      "aliases": "The Creator, A. K., Alex",
+      "firstAppearance": "Entry #1",
+      "voicedBy": "Troy Wagner",
+      "summary": "",
+      "article": "",
+      "image": null,
+      "images": [],
+      "customFields": []
+    }
+  ],
   "ahw_eps": [
     {
       "id": "e300",
