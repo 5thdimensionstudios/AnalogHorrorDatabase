@@ -27,7 +27,23 @@
       "tagsInput": ""
     }
   ],
-  "ahw_chars": [],
+  "ahw_chars": [
+    {
+      "id": "c200",
+      "seriesId": "",
+      "name": "f",
+      "type": "Character",
+      "status": "Unknown",
+      "aliases": "f",
+      "firstAppearance": "f",
+      "voicedBy": "f",
+      "summary": "",
+      "article": "",
+      "image": null,
+      "images": [],
+      "customFields": []
+    }
+  ],
   "ahw_eps": [],
   "ahw_settings": {
     "bgAnimation": "minimal",
