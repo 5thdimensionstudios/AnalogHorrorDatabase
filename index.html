@@ -818,9 +818,9 @@ function App(){
   useEffect(()=>{
     (async()=>{
       const [sv,cv,ev,st] = await sGetAll(["ahw_series","ahw_chars","ahw_eps","ahw_settings"]);
-      const seriesData = (sv && sv.length > 0) ? sv : SEED_SERIES;
-      const charsData  = (cv && cv.length > 0) ? cv : SEED_CHARS;
-      const epsData    = (ev && ev.length > 0) ? ev : SEED_EPS;
+      const seriesData = (sv !== null) ? sv : SEED_SERIES;
+      const charsData  = (cv !== null) ? cv : SEED_CHARS;
+      const epsData    = (ev !== null) ? ev : SEED_EPS;
       setSeries(seriesData);
       setChars(charsData);
       setEps(epsData);
