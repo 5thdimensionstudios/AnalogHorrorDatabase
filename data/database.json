@@ -57,6 +57,21 @@
       "article": "Jack Walten was the co-founder and co-owner of Bon's Burgers. He founded the company alongside Felix Kranken in the early 1970s.\n\n== Disappearance ==\nHis disappearance, along with the rest of the Walten family, is the central mystery. VHS tapes depict Jack in home recordings and promotional material. His fate is slowly revealed across the series.",
       "voicedBy": "Martin Walls",
       "customFields": []
+    },
+    {
+      "id": "c200",
+      "seriesId": "",
+      "name": "f",
+      "type": "Character",
+      "status": "Unknown",
+      "aliases": "f",
+      "firstAppearance": "f",
+      "voicedBy": "f",
+      "summary": "",
+      "article": "",
+      "image": null,
+      "images": [],
+      "customFields": []
     }
   ],
   "ahw_eps": [],
