@@ -111,9 +111,11 @@ module.exports = async (req, res) => {
 
   if (req.method === "GET") {
     const { data } = await readFile();
-    const full = req.query && req.query.admin === "1";
-    res.setHeader("Cache-Control", full ? "no-store" : "public, max-age=5, s-maxage=10, stale-while-revalidate=30");
+    // Always return fresh data — no CDN caching.
+    // The in-memory _cache handles performance instead.
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Type", "application/json");
+    const full = req.query && req.query.admin === "1";
     return res.status(200).json(full ? data : stripImages(data));
   }
 
