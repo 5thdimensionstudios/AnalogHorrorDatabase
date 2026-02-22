@@ -30,7 +30,7 @@
   "ahw_chars": [],
   "ahw_eps": [],
   "ahw_settings": {
-    "bgAnimation": "matrix",
+    "bgAnimation": "minimal",
     "accentColor": "#ff2222",
     "accentGlow": true,
     "bgColor": "#060608",
