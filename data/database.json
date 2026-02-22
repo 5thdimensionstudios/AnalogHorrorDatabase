@@ -157,6 +157,22 @@
       "characterIds": [],
       "images": [],
       "customFields": []
+    },
+    {
+      "id": "e306",
+      "seriesId": "s101",
+      "title": "Entry 6",
+      "episodeNumber": "7",
+      "airDate": "",
+      "duration": "",
+      "videoUrl": "",
+      "summary": "",
+      "synopsis": "",
+      "notes": "",
+      "castNotes": "",
+      "characterIds": [],
+      "images": [],
+      "customFields": []
     }
   ],
   "ahw_settings": {
