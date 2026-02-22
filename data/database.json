@@ -61,7 +61,24 @@
     }
   ],
   "ahw_chars": [],
-  "ahw_eps": [],
+  "ahw_eps": [
+    {
+      "id": "e300",
+      "seriesId": "s101",
+      "title": "Introduction",
+      "episodeNumber": "1",
+      "airDate": "",
+      "duration": "",
+      "videoUrl": "",
+      "summary": "",
+      "synopsis": "",
+      "notes": "",
+      "castNotes": "",
+      "characterIds": [],
+      "images": [],
+      "customFields": []
+    }
+  ],
   "ahw_settings": {
     "bgAnimation": "minimal",
     "accentColor": "#ff2222",
