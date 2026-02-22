@@ -397,6 +397,22 @@
       "characterIds": [],
       "images": [],
       "customFields": []
+    },
+    {
+      "id": "e321",
+      "seriesId": "s101",
+      "title": "Entry #20",
+      "episodeNumber": "22",
+      "airDate": "",
+      "duration": "",
+      "videoUrl": "",
+      "summary": "",
+      "synopsis": "",
+      "notes": "",
+      "castNotes": "",
+      "characterIds": [],
+      "images": [],
+      "customFields": []
     }
   ],
   "ahw_settings": {
