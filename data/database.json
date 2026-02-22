@@ -104,6 +104,36 @@
         }
       ],
       "customFields": []
+    },
+    {
+      "id": "c202",
+      "seriesId": "s101",
+      "name": "The Operator",
+      "type": "Entity",
+      "status": "Unknown",
+      "aliases": "",
+      "firstAppearance": "",
+      "voicedBy": "",
+      "summary": "",
+      "article": "",
+      "image": null,
+      "images": [],
+      "customFields": []
+    },
+    {
+      "id": "c203",
+      "seriesId": "s101",
+      "name": "Brian Haight",
+      "type": "Character",
+      "status": "Unknown",
+      "aliases": "",
+      "firstAppearance": "",
+      "voicedBy": "",
+      "summary": "",
+      "article": "",
+      "image": null,
+      "images": [],
+      "customFields": []
     }
   ],
   "ahw_eps": [
