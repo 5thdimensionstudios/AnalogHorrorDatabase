@@ -11,12 +11,10 @@ const GH_HEADERS = {
   "User-Agent": "vercel-function"
 };
 
-// In-memory cache — survives across requests on the same warm instance.
-// Cuts GitHub API calls dramatically under real traffic.
 let _cache = null;
 let _cacheSha = null;
 let _cacheTime = 0;
-const CACHE_TTL = 10000; // 10 seconds — fresh enough, cuts redundant reads
+const CACHE_TTL = 10000;
 
 async function readFile() {
   const now = Date.now();
@@ -47,13 +45,58 @@ async function writeFile(newData, sha) {
     body: JSON.stringify(body)
   });
   if (res.ok) {
-    // Update cache immediately so next read is instant
     _cache = newData;
     _cacheTime = Date.now();
     const json = await res.json();
     _cacheSha = json.content?.sha || _cacheSha;
   }
   return res.ok;
+}
+
+function smartMerge(current, incoming) {
+  const merged = { ...current };
+  for (const key of Object.keys(incoming)) {
+    const inVal = incoming[key];
+    const curVal = current[key];
+    if (
+      Array.isArray(inVal) && Array.isArray(curVal) &&
+      inVal.length > 0 && inVal[0] && typeof inVal[0] === "object" && inVal[0].id
+    ) {
+      const curById = {};
+      for (const item of curVal) curById[item.id] = item;
+      merged[key] = inVal.map(inItem => {
+        const curItem = curById[inItem.id];
+        if (!curItem) return inItem;
+        const restoredImages =
+          (!inItem.images || inItem.images.length === 0) && curItem.images && curItem.images.length > 0
+            ? curItem.images : inItem.images;
+        const restoredImage =
+          inItem.image === null && curItem.image ? curItem.image : inItem.image;
+        return { ...inItem, images: restoredImages, image: restoredImage };
+      });
+    } else {
+      merged[key] = inVal;
+    }
+  }
+  return merged;
+}
+
+function stripImages(data) {
+  if (!data) return data;
+  const out = { ...data };
+  if (out.ahw_series) {
+    out.ahw_series = out.ahw_series.map(s => ({
+      ...s,
+      images: (s.images || []).map(img => ({ ...img, data: img.iscover ? img.data : undefined }))
+    }));
+  }
+  if (out.ahw_chars) {
+    out.ahw_chars = out.ahw_chars.map(c => ({ ...c, image: null, images: [] }));
+  }
+  if (out.ahw_eps) {
+    out.ahw_eps = out.ahw_eps.map(e => ({ ...e, images: [] }));
+  }
+  return out;
 }
 
 const CORS = {
@@ -63,82 +106,31 @@ const CORS = {
 };
 
 module.exports = async (req, res) => {
-  // Set CORS
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
-
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   if (req.method === "GET") {
     const { data } = await readFile();
-
-    // Cache-Control: CDN caches for 10s, browser for 5s.
-    // Visitors get fast cached responses. Admins see changes within 10s.
-    // This is the single biggest bandwidth optimization — CDN serves most requests
-    // without hitting the function at all.
-    res.setHeader("Cache-Control", "public, max-age=5, s-maxage=10, stale-while-revalidate=30");
+    const full = req.query && req.query.admin === "1";
+    res.setHeader("Cache-Control", full ? "no-store" : "public, max-age=5, s-maxage=10, stale-while-revalidate=30");
     res.setHeader("Content-Type", "application/json");
-
-    // Strip base64 images from public reads to massively reduce payload size.
-    // Images are only needed by admins for editing. Visitors just see the data.
-    const stripped = stripImages(data);
-    return res.status(200).json(stripped);
+    return res.status(200).json(full ? data : stripImages(data));
   }
 
   if (req.method === "POST") {
-    // Only admins POST. No caching on writes.
     let incoming;
     try {
-      // Vercel provides body as object if Content-Type is application/json
       incoming = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     } catch {
       return res.status(400).send("Invalid JSON");
     }
-
     const { data: current, sha } = await readFile();
-    const merged = { ...current, ...incoming };
+    const merged = smartMerge(current, incoming);
     const ok = await writeFile(merged, sha);
-
     if (!ok) return res.status(500).send("Failed to write to GitHub");
-
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).json({ success: true });
   }
 
   return res.status(405).send("Method not allowed");
 };
-
-// Remove base64 image data from the payload sent to regular visitors.
-// Images are still stored in GitHub — admins load them when they open edit mode.
-// This can cut payload size by 90%+ when series have cover images.
-function stripImages(data) {
-  if (!data) return data;
-  const out = { ...data };
-
-  if (out.ahw_series) {
-    out.ahw_series = out.ahw_series.map(s => ({
-      ...s,
-      images: (s.images || []).map(img => ({
-        ...img,
-        data: img.iscover ? img.data : undefined // keep only cover, strip rest
-      }))
-    }));
-  }
-
-  if (out.ahw_chars) {
-    out.ahw_chars = out.ahw_chars.map(c => ({
-      ...c,
-      images: [] // strip all character images for visitors
-    }));
-  }
-
-  if (out.ahw_eps) {
-    out.ahw_eps = out.ahw_eps.map(e => ({
-      ...e,
-      images: [] // strip episode images for visitors
-    }));
-  }
-
-  return out;
-}
