@@ -8,32 +8,25 @@ const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}`;
 const GH_HEADERS = {
   Authorization: `token ${TOKEN}`,
   "Content-Type": "application/json",
-  "User-Agent": "vercel-function"
+  "User-Agent": "vercel-function",
+  "Accept": "application/vnd.github.v3+json"
 };
 
-let _cache = null;
-let _cacheSha = null;
-let _cacheTime = 0;
-const CACHE_TTL = 10000;
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+};
 
 async function readFile() {
-  const now = Date.now();
-  if (_cache && (now - _cacheTime) < CACHE_TTL) {
-    return { data: _cache, sha: _cacheSha };
+  const res = await fetch(API, { headers: GH_HEADERS });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`GitHub GET failed: ${res.status} ${res.statusText} — ${body}`);
   }
-  try {
-    const res = await fetch(API, { headers: GH_HEADERS });
-    if (res.status === 404) return { data: {}, sha: null };
-    if (!res.ok) return { data: _cache || {}, sha: _cacheSha };
-    const json = await res.json();
-    const raw = Buffer.from(json.content, "base64").toString("utf-8");
-    _cache = JSON.parse(raw);
-    _cacheSha = json.sha;
-    _cacheTime = now;
-    return { data: _cache, sha: _cacheSha };
-  } catch (err) {
-    return { data: _cache || {}, sha: _cacheSha };
-  }
+  const json = await res.json();
+  const raw = Buffer.from(json.content, "base64").toString("utf-8");
+  return { data: JSON.parse(raw), sha: json.sha };
 }
 
 async function writeFile(newData, sha) {
@@ -44,13 +37,12 @@ async function writeFile(newData, sha) {
     headers: GH_HEADERS,
     body: JSON.stringify(body)
   });
-  if (res.ok) {
-    _cache = newData;
-    _cacheTime = Date.now();
-    const json = await res.json();
-    _cacheSha = json.content?.sha || _cacheSha;
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`GitHub PUT failed: ${res.status} ${res.statusText} — ${errBody}`);
   }
-  return res.ok;
+  const json = await res.json();
+  return json.content?.sha;
 }
 
 function smartMerge(current, incoming) {
@@ -99,24 +91,32 @@ function stripImages(data) {
   return out;
 }
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
-};
-
 module.exports = async (req, res) => {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
   if (req.method === "OPTIONS") return res.status(204).end();
 
+  if (req.query && req.query.debug === "1") {
+    return res.status(200).json({
+      OWNER: OWNER || "NOT SET",
+      REPO:  REPO  || "NOT SET",
+      PATH:  PATH  || "NOT SET",
+      TOKEN: TOKEN ? `set (${TOKEN.length} chars)` : "NOT SET",
+      API_URL: API
+    });
+  }
+
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Type", "application/json");
+
   if (req.method === "GET") {
-    const { data } = await readFile();
-    // Always return fresh data — no CDN caching.
-    // The in-memory _cache handles performance instead.
-    res.setHeader("Cache-Control", "no-store");
-    res.setHeader("Content-Type", "application/json");
-    const full = req.query && req.query.admin === "1";
-    return res.status(200).json(full ? data : stripImages(data));
+    try {
+      const { data } = await readFile();
+      const full = req.query && req.query.admin === "1";
+      return res.status(200).json(full ? data : stripImages(data));
+    } catch (err) {
+      console.error("READ ERROR:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   if (req.method === "POST") {
@@ -124,15 +124,18 @@ module.exports = async (req, res) => {
     try {
       incoming = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     } catch {
-      return res.status(400).send("Invalid JSON");
+      return res.status(400).json({ error: "Invalid JSON" });
     }
-    const { data: current, sha } = await readFile();
-    const merged = smartMerge(current, incoming);
-    const ok = await writeFile(merged, sha);
-    if (!ok) return res.status(500).send("Failed to write to GitHub");
-    res.setHeader("Cache-Control", "no-store");
-    return res.status(200).json({ success: true });
+    try {
+      const { data: current, sha } = await readFile();
+      const merged = smartMerge(current, incoming);
+      await writeFile(merged, sha);
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error("WRITE ERROR:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
   }
 
-  return res.status(405).send("Method not allowed");
+  return res.status(405).json({ error: "Method not allowed" });
 };
