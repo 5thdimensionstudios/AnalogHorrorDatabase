@@ -284,14 +284,17 @@
       "seriesId": "s101",
       "title": "Entry #7",
       "episodeNumber": "8",
-      "airDate": "",
-      "duration": "",
-      "videoUrl": "",
-      "summary": "",
-      "synopsis": "",
+      "airDate": "July 7, 2009",
+      "duration": "2:00",
+      "videoUrl": "https://www.youtube.com/watch?v=0q3cQjeerNU&list=PLWgB5Nf3Hq3t2quS0ea-9FvTtEzXWfljF&index=8",
+      "summary": "During a line rehearsal in Alex's van, The Operator appears in the background unnoticed by everyone present.",
+      "synopsis": "Alex films Brian running lines in the passenger seat of his van. An unknown girl is visible but silent in the back seat. Brian delivers his lines and leans back, and visible in the distance behind the van, partially obscured by a brick wall, The Operator stands watching. Alex shows no outward alarm but drives away quickly. The clip ends with heavy low-frequency audio distortion. Jay ends the entry by noting that someone was following Alex.",
       "notes": "",
       "castNotes": "",
-      "characterIds": [],
+      "characterIds": [
+        "c200",
+        "c202"
+      ],
       "images": [],
       "customFields": []
     },
