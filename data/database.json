@@ -45,7 +45,7 @@
     "vhsIntensity": 0.6,
     "phosphorColor": "#00ff41",
     "displayFont": "SpecialElite",
-    "bodyFont": "Inconsolata"
+    "bodyFont": "IBMPlexMono"
   },
   "ahw_r_s100": {
     "count": 2,
