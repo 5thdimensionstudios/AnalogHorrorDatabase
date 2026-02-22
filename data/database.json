@@ -28,9 +28,9 @@
     },
     {
       "id": "s101",
-      "title": "Marbel Hornets",
+      "title": "Marble Hornets",
       "creator": "Troy Wagner and Joseph DeLage",
-      "year": "",
+      "year": 2009,
       "platform": "YouTube",
       "status": "Complete",
       "tags": [
@@ -104,21 +104,6 @@
         }
       ],
       "customFields": []
-    },
-    {
-      "id": "c202",
-      "seriesId": "s101",
-      "name": "The Operator",
-      "type": "Entity",
-      "status": "Unknown",
-      "aliases": "",
-      "firstAppearance": "",
-      "voicedBy": "",
-      "summary": "",
-      "article": "",
-      "image": null,
-      "images": [],
-      "customFields": []
     }
   ],
   "ahw_eps": [
@@ -185,8 +170,7 @@
       "notes": "",
       "castNotes": "",
       "characterIds": [
-        "c200",
-        "c202"
+        "c200"
       ],
       "images": [
         {
@@ -203,16 +187,14 @@
       "seriesId": "s101",
       "title": "Entry #3",
       "episodeNumber": "4",
-      "airDate": "June 23, 2009",
-      "duration": "2:28",
-      "videoUrl": "https://www.youtube.com/watch?v=b52bwPam7O8&list=PLWgB5Nf3Hq3t2quS0ea-9FvTtEzXWfljF&index=4",
-      "summary": "A montage of mundane self-filmed footage showing Alex's increasingly paranoid habit of filming himself constantly.",
-      "synopsis": "Jay notes that most of the tapes he has reviewed are not related to the student film at all — instead they show Alex filming himself going about ordinary life. Clips from twelve unsorted tapes show Alex crumpling paper, walking through woods at night, shopping for camera supplies, driving, and sitting alone. Jay notes the footage seems to have no substantial information but uploads it to establish that Alex had developed an irrational need to keep a camera on himself at all times, which Jay considers significant.",
+      "airDate": "",
+      "duration": "",
+      "videoUrl": "",
+      "summary": "",
+      "synopsis": "",
       "notes": "",
       "castNotes": "",
-      "characterIds": [
-        "c200"
-      ],
+      "characterIds": [],
       "images": [
         {
           "id": "img1771777065502550",
@@ -228,17 +210,14 @@
       "seriesId": "s101",
       "title": "Entry #4",
       "episodeNumber": "5",
-      "airDate": "June 25, 2009",
-      "duration": "0:46",
-      "videoUrl": "https://www.youtube.com/watch?v=yBNQZvOkSCw&list=PLWgB5Nf3Hq3t2quS0ea-9FvTtEzXWfljF&index=5",
-      "summary": "Alex wanders a deserted playground at night and encounters The Operator among the swings.",
-      "synopsis": "Alex films himself walking through an abandoned playground at night. The clip has no audio — Jay suspects it was removed intentionally. A swing begins moving on its own with no wind to account for it, frightening Alex. The Operator appears briefly at the edge of the frame. Alex runs, looking back repeatedly. The camera falls as he does. The clip ends there. Jay notes the Operator appears to be moving in this footage, advancing rather than standing still.",
+      "airDate": "",
+      "duration": "",
+      "videoUrl": "",
+      "summary": "",
+      "synopsis": "",
       "notes": "",
       "castNotes": "",
-      "characterIds": [
-        "c200",
-        "c202"
-      ],
+      "characterIds": [],
       "images": [],
       "customFields": []
     },
