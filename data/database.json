@@ -477,6 +477,22 @@
       "characterIds": [],
       "images": [],
       "customFields": []
+    },
+    {
+      "id": "e326",
+      "seriesId": "s101",
+      "title": "Entry ######",
+      "episodeNumber": "27",
+      "airDate": "",
+      "duration": "",
+      "videoUrl": "",
+      "summary": "",
+      "synopsis": "",
+      "notes": "",
+      "castNotes": "",
+      "characterIds": [],
+      "images": [],
+      "customFields": []
     }
   ],
   "ahw_settings": {
