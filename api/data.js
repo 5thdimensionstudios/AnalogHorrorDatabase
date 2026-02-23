@@ -1,15 +1,10 @@
-const OWNER = process.env.REPO_OWNER;
-const REPO  = process.env.REPO_NAME;
-const PATH  = process.env.DB_FILE_PATH;
-const TOKEN = process.env.GITHUB_TOKEN;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}`;
-
-const GH_HEADERS = {
-  Authorization: `token ${TOKEN}`,
-  "Content-Type": "application/json",
-  "User-Agent": "vercel-function",
-  "Accept": "application/vnd.github.v3+json"
+const HEADERS = {
+  "apikey": SUPABASE_KEY,
+  "Authorization": `Bearer ${SUPABASE_KEY}`,
+  "Content-Type": "application/json"
 };
 
 const CORS = {
@@ -18,31 +13,55 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type"
 };
 
-async function readFile() {
-  const res = await fetch(API, { headers: GH_HEADERS });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`GitHub GET failed: ${res.status} ${res.statusText} — ${body}`);
-  }
-  const json = await res.json();
-  const raw = Buffer.from(json.content, "base64").toString("utf-8");
-  return { data: JSON.parse(raw), sha: json.sha };
-}
-
-async function writeFile(newData, sha) {
-  const content = Buffer.from(JSON.stringify(newData, null, 2)).toString("base64");
-  const body = { message: "Update database", content, ...(sha ? { sha } : {}) };
-  const res = await fetch(API, {
-    method: "PUT",
-    headers: GH_HEADERS,
-    body: JSON.stringify(body)
+async function dbGet(key) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/store?key=eq.${key}&select=value`, {
+    headers: HEADERS
   });
   if (!res.ok) {
-    const errBody = await res.text();
-    throw new Error(`GitHub PUT failed: ${res.status} ${res.statusText} — ${errBody}`);
+    const err = await res.text();
+    throw new Error(`Supabase GET failed: ${res.status} — ${err}`);
   }
-  const json = await res.json();
-  return json.content?.sha;
+  const rows = await res.json();
+  return rows.length > 0 ? rows[0].value : null;
+}
+
+async function dbSet(key, value) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/store`, {
+    method: "POST",
+    headers: {
+      ...HEADERS,
+      "Prefer": "resolution=merge-duplicates"
+    },
+    body: JSON.stringify({ key, value })
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase SET failed: ${res.status} — ${err}`);
+  }
+}
+
+async function readDb() {
+  const [series, chars, eps, settings, ratings, reviews] = await Promise.all([
+    dbGet("ahw_series"),
+    dbGet("ahw_chars"),
+    dbGet("ahw_eps"),
+    dbGet("ahw_settings"),
+    dbGet("ahw_ratings"),
+    dbGet("ahw_reviews"),
+  ]);
+  return {
+    ahw_series:   series   || [],
+    ahw_chars:    chars    || [],
+    ahw_eps:      eps      || [],
+    ahw_settings: settings || {},
+    ahw_ratings:  ratings  || {},
+    ahw_reviews:  reviews  || {},
+  };
+}
+
+async function writeDb(data) {
+  const entries = Object.entries(data);
+  await Promise.all(entries.map(([key, value]) => dbSet(key, value)));
 }
 
 function smartMerge(current, incoming) {
@@ -95,22 +114,20 @@ module.exports = async (req, res) => {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
   if (req.method === "OPTIONS") return res.status(204).end();
 
-  if (req.query && req.query.debug === "1") {
-    return res.status(200).json({
-      OWNER: OWNER || "NOT SET",
-      REPO:  REPO  || "NOT SET",
-      PATH:  PATH  || "NOT SET",
-      TOKEN: TOKEN ? `set (${TOKEN.length} chars)` : "NOT SET",
-      API_URL: API
-    });
-  }
-
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("Content-Type", "application/json");
 
+  // Debug — visit /api/data?debug=1 to check config
+  if (req.query && req.query.debug === "1") {
+    return res.status(200).json({
+      SUPABASE_URL: SUPABASE_URL || "NOT SET",
+      SUPABASE_KEY: SUPABASE_KEY ? `set (${SUPABASE_KEY.length} chars)` : "NOT SET",
+    });
+  }
+
   if (req.method === "GET") {
     try {
-      const { data } = await readFile();
+      const data = await readDb();
       const full = req.query && req.query.admin === "1";
       return res.status(200).json(full ? data : stripImages(data));
     } catch (err) {
@@ -127,9 +144,9 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Invalid JSON" });
     }
     try {
-      const { data: current, sha } = await readFile();
+      const current = await readDb();
       const merged = smartMerge(current, incoming);
-      await writeFile(merged, sha);
+      await writeDb(merged);
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error("WRITE ERROR:", err.message);
