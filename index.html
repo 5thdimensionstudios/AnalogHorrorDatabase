@@ -432,13 +432,19 @@ function Lightbox({src,onClose}){
 }
 
 // ── COMMUNITY RATING ──────────────────────────────────────────────
-function CommunityRating({sid,toast}){
-  const [hover,setHover]=useState(0),[myR,setMyR]=useState(0),[agg,setAgg]=useState(null),[done,setDone]=useState(false),[loading,setLoading]=useState(true);
-  useEffect(()=>{(async()=>{const d=await sGet("ahw_r_"+sid);if(d)setAgg(d);if(hasRated(sid))setDone(true);setLoading(false);})();},[sid]);
+function CommunityRating({sid,toast,initAgg,onRate}){
+  const [hover,setHover]=useState(0),[myR,setMyR]=useState(0),[agg,setAgg]=useState(initAgg||null),[done,setDone]=useState(false),[loading,setLoading]=useState(!initAgg);
+  useEffect(()=>{(async()=>{
+    if(initAgg){setAgg(initAgg);} else {const d=await sGet("ahw_r_"+sid);if(d)setAgg(d);}
+    if(hasRated(sid))setDone(true);
+    setLoading(false);
+  })();},[sid]);
   const rate=async(n)=>{
     if(done||loading)return;
     const p=agg||{count:0,total:0};const u={count:p.count+1,total:p.total+n,avg:Math.round(((p.total+n)/(p.count+1))*10)/10};
-    setAgg(u);setMyR(n);setDone(true);markRated(sid);await sSet("ahw_r_"+sid,u);toast("Rating saved!","success");
+    setAgg(u);setMyR(n);setDone(true);markRated(sid);await sSet("ahw_r_"+sid,u);
+    if(onRate)onRate(sid,u); // keep App-level communityRatings in sync
+    toast("Rating saved!","success");
   };
   if(loading)return null;
   return(<div className="cb-block">
@@ -660,7 +666,7 @@ function EpisodeDetail({ep,allSeries,allChars,isAdmin,onEdit,onDelete,onBack,onC
 }
 
 // ── SERIES DETAIL ─────────────────────────────────────────────────
-function SeriesDetail({series,chars,eps,isAdmin,onEdit,onDelete,onBack,onTagClick,onCharClick,onAddChar,onAddEp,onEpClick,toast}){
+function SeriesDetail({series,chars,eps,isAdmin,onEdit,onDelete,onBack,onTagClick,onCharClick,onAddChar,onAddEp,onEpClick,toast,communityRating,onRate}){
   const [lb,setLb]=useState(null);
   const cover=series.images&&series.images.find(i=>i.iscover)||( series.images&&series.images[0]);
   const sc=chars.filter(c=>c.seriesId===series.id);
@@ -674,7 +680,8 @@ function SeriesDetail({series,chars,eps,isAdmin,onEdit,onDelete,onBack,onTagClic
           <h1 className="detail-ttl">{series.title}</h1>
           <div className="detail-meta">
             <span className="status-pill" style={{background:"color-mix(in srgb,"+(S_CLR[series.status]||"#888")+" 12%,transparent)",borderColor:S_CLR[series.status]||"#888",color:S_CLR[series.status]||"#888"}}><span className="dot" style={{background:S_CLR[series.status]||"#888"}}/>{series.status}</span>
-            {series.rating&&<span className="rating-pill">★ {series.rating}/10</span>}
+            {communityRating&&communityRating.count>0&&<span className="rating-pill" title={communityRating.count+" community vote"+(communityRating.count!==1?"s":"")}>★ {communityRating.avg}/5 <span style={{opacity:.55,fontSize:".5rem"}}>({communityRating.count})</span></span>}
+            {series.rating&&<span className="meta-chip" title="Admin rating">🔒 {series.rating}/10</span>}
             {series.platform&&<span className="meta-chip">{series.platform}</span>}
             {series.episodeCount&&<span className="meta-chip">{series.episodeCount} ep.</span>}
           </div>
@@ -703,7 +710,7 @@ function SeriesDetail({series,chars,eps,isAdmin,onEdit,onDelete,onBack,onTagClic
           </div>);})}</div>}
         </div>
         {(series.relatedSeries||[]).length>0&&<div className="wiki-sec"><h2 className="wiki-h2">See Also</h2><div className="tags-row">{series.relatedSeries.map(r=><span key={r} className="tag related">{r}</span>)}</div></div>}
-        <CommunityRating sid={series.id} toast={toast}/>
+        <CommunityRating sid={series.id} toast={toast} initAgg={communityRating} onRate={onRate}/>
         <Reviews sid={series.id} isAdmin={isAdmin} toast={toast}/>
         <div className="detail-acts">{isAdmin&&<button className="btn primary" onClick={onEdit}>✎ Edit</button>}{isAdmin&&<button className="btn danger" onClick={onDelete}>Delete</button>}{series.sourceUrl&&<button className="btn ghost" onClick={()=>window.open(series.sourceUrl,"_blank","noopener,noreferrer")}>↗ Source</button>}<button className="btn ghost" onClick={onBack}>← Archive</button></div>
       </div>
@@ -716,7 +723,8 @@ function SeriesDetail({series,chars,eps,isAdmin,onEdit,onDelete,onBack,onTagClic
           <div className="ib-row"><span className="ib-k">Platform</span><span className="ib-v">{series.platform}</span></div>
           <div className="ib-row"><span className="ib-k">Status</span><span className="ib-v" style={{color:S_CLR[series.status]||"#ccc"}}>{series.status}</span></div>
           {series.episodeCount&&<div className="ib-row"><span className="ib-k">Episodes</span><span className="ib-v">{series.episodeCount}</span></div>}
-          {series.rating&&<div className="ib-row"><span className="ib-k">Rating</span><span className="ib-v">★ {series.rating}/10</span></div>}
+          {communityRating&&communityRating.count>0&&<div className="ib-row"><span className="ib-k">Community</span><span className="ib-v" style={{color:"#ffcc44"}}>★ {communityRating.avg}/5 <span style={{opacity:.5,fontSize:".6rem"}}>({communityRating.count} vote{communityRating.count!==1?"s":""})</span></span></div>}
+          {series.rating&&<div className="ib-row"><span className="ib-k">Admin</span><span className="ib-v" style={{color:"#ffcc44",opacity:.7}}>★ {series.rating}/10</span></div>}
           {(series.customFields||[]).filter(cf=>cf.key).map((cf,i)=><div key={i} className="ib-row"><span className="ib-k">{cf.key}</span><span className="ib-v">{cf.value}</span></div>)}
         </div>
       </aside>
@@ -838,6 +846,7 @@ function App(){
   const [chars,setChars]=useState([]);
   const [eps,setEps]=useState([]);
   const [settings,setSettings]=useState(DEF);
+  const [communityRatings,setCommunityRatings]=useState({}); // { [sid]: {avg, count} }
   const [loaded,setLoaded]=useState(false);
   const [isAdmin,setIsAdmin]=useState(false);
   const [showLogin,setShowLogin]=useState(false);
@@ -863,6 +872,14 @@ function App(){
       cidRef.current=Math.max(...charsData.map(c=>parseInt(c.id.replace(/\D/g,""))||0),199)+1;
       eidRef.current=Math.max(...epsData.map(e=>parseInt(e.id.replace(/\D/g,""))||0),299)+1;
       if(st)setSettings(p=>({...p,...st}));
+      // Batch-load all community ratings so cards don't each fire a separate request
+      if(seriesData.length>0){
+        const rKeys=seriesData.map(s=>"ahw_r_"+s.id);
+        const rVals=await sGetAll(rKeys);
+        const rMap={};
+        seriesData.forEach((s,i)=>{if(rVals[i])rMap[s.id]=rVals[i];});
+        setCommunityRatings(rMap);
+      }
       // Note: we do NOT auto-restore admin from sessionStorage anymore.
       // Admin must log in fresh each session — the password is never stored.
       setLoaded(true);
@@ -996,7 +1013,10 @@ function App(){
     .badge{font-size:.53rem;padding:1px 6px;border:1px solid #2a2a30;color:#555;text-transform:uppercase;letter-spacing:1px;}
     .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle;}
     .status-pill{font-size:.6rem;padding:2px 8px;border:1px solid;border-radius:2px;display:inline-flex;align-items:center;}
-    .rating-pill{font-size:.6rem;padding:2px 8px;border:1px solid #2a2a30;color:#ffcc44;}
+    .s-card-rating{display:flex;align-items:baseline;gap:9px;margin-bottom:6px;min-height:1rem;}
+    .s-card-cr{font-family:var(--ffd);font-size:1.05rem;color:#ffcc44;line-height:1;}
+    .s-card-cr-sub{font-family:var(--ffb);font-size:.55rem;color:var(--td);margin-left:3px;}
+    .s-card-ar{font-size:.56rem;color:#888;border:1px solid #252530;padding:1px 5px;}
     .meta-chip{font-size:.6rem;padding:2px 8px;border:1px solid var(--bd);color:var(--td);}
     .series-link{cursor:pointer;}.series-link:hover{color:var(--a)!important;text-decoration:underline;}
     .detail-page{padding:24px 20px;max-width:1100px;margin:0 auto;width:100%;}
@@ -1189,7 +1209,10 @@ function App(){
               {cover&&<img src={cover.data} alt="" className="s-card-cover"/>}
               <div className="s-card-body">
                 <div className="s-card-title">{s.title}</div>
-                <div className="s-card-meta"><span style={{color:S_CLR[s.status]||"#888"}}><span className="dot" style={{background:S_CLR[s.status]||"#888"}}/>{s.status}</span><span>{s.creator}</span><span>{s.year}</span>{s.rating&&<span style={{color:"#ffcc44"}}>★ {s.rating}</span>}{sc2>0&&<span style={{color:"var(--a)"}}>{sc2} char{sc2!==1?"s":""}</span>}</div>
+                <div className="s-card-meta"><span style={{color:S_CLR[s.status]||"#888"}}><span className="dot" style={{background:S_CLR[s.status]||"#888"}}/>{s.status}</span><span>{s.creator}</span><span>{s.year}</span>{sc2>0&&<span style={{color:"var(--a)"}}>{sc2} char{sc2!==1?"s":""}</span>}</div>
+                {communityRatings[s.id]&&communityRatings[s.id].count>0
+                  ?<div className="s-card-rating"><span className="s-card-cr">★ {communityRatings[s.id].avg}<span className="s-card-cr-sub">/5 · {communityRatings[s.id].count} vote{communityRatings[s.id].count!==1?"s":""}</span></span>{s.rating&&<span className="s-card-ar">🔒 {s.rating}/10</span>}</div>
+                  :<div className="s-card-rating">{s.rating&&<span className="s-card-ar">🔒 {s.rating}/10</span>}</div>}
                 <div className="s-card-desc">{s.description}</div>
                 <div className="tags-row">{(s.tags||[]).slice(0,4).map(t=><span key={t} className={"tag"+(sTag===t?" on":"")} onClick={e=>{e.stopPropagation();setSTag(sTag===t?"":t);}}>{t}</span>)}{(s.tags||[]).length>4&&<span className="tag">+{s.tags.length-4}</span>}</div>
               </div>
@@ -1223,6 +1246,8 @@ function App(){
 
       {nav.page==="series-detail"&&(curSer
         ?<SeriesDetail series={curSer} chars={chars} eps={eps} isAdmin={isAdmin} toast={addToast}
+            communityRating={communityRatings[curSer.id]||null}
+            onRate={(sid,u)=>setCommunityRatings(p=>({...p,[sid]:u}))}
             onEdit={()=>setNav({page:"series-edit",id:curSer.id})}
             onDelete={()=>setConfirmDel({type:"series",id:curSer.id})}
             onBack={()=>setNav({page:"series-list"})}
