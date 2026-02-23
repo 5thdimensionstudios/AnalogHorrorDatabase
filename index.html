@@ -400,19 +400,6 @@ function Lightbox({src,onClose}){
   return <div className="overlay lbx" onClick={onClose}><div style={{maxWidth:"90vw",maxHeight:"90vh",position:"relative"}} onClick={e=>e.stopPropagation()}><img src={src} style={{maxWidth:"100%",maxHeight:"85vh",objectFit:"contain",display:"block"}}/><button className="btn ghost sm" style={{position:"absolute",top:-34,right:0}} onClick={onClose}>✕ CLOSE</button></div></div>;
 }
 
-// ── ADMIN LOGIN ───────────────────────────────────────────────────
-function AdminLogin({onLogin,onClose}){
-  const [pw,setPw]=useState(""),[err,setErr]=useState("");
-  const go=()=>{if(pw===ADMIN_PASS)onLogin();else{setErr("Incorrect password.");setPw("");}};
-  useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
-  return(<div className="overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
-    <h3>ADMIN LOGIN</h3><p>Enter the admin password to enable editing.</p>
-    <input type="password" value={pw} onChange={e=>{setPw(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="Admin password" autoFocus style={{marginTop:12,marginBottom:6}}/>
-    {err&&<p style={{color:"var(--red)",fontSize:".68rem",marginBottom:6}}>⚠ {err}</p>}
-    <div className="modal-btns"><button className="btn primary" onClick={go}>Login</button><button className="btn ghost" onClick={onClose}>Cancel</button></div>
-  </div></div>);
-}
-
 // ── COMMUNITY RATING ──────────────────────────────────────────────
 function CommunityRating({sid,toast}){
   const [hover,setHover]=useState(0),[myR,setMyR]=useState(0),[agg,setAgg]=useState(null),[done,setDone]=useState(false),[loading,setLoading]=useState(true);
