@@ -88,6 +88,7 @@ function moderate(raw) {
 const API_URL = "/api/data";
 const PROTECTED_KEYS = ["ahw_series","ahw_chars","ahw_eps","ahw_settings"];
 let _dbCache = null;
+let _dbFetchPromise = null; // Bug fix #3: prevents cache stampede on concurrent loads
 let _dirtyKeys = new Set();
 let _dbSaveTimer = null;
 let _adminToken = null; // set on login, cleared on logout
@@ -100,33 +101,42 @@ function _getHeaders(includeAdmin) {
 
 async function _loadDb(asAdmin) {
   if (_dbCache !== null) return _dbCache;
-  try {
-    const res = await fetch(API_URL, {
+  // Reuse any in-flight fetch instead of firing N parallel requests
+  if (!_dbFetchPromise) {
+    _dbFetchPromise = fetch(API_URL, {
       cache: "no-store",
       headers: asAdmin && _adminToken ? { "X-Admin-Token": _adminToken } : {}
-    });
-    _dbCache = res.ok ? await res.json() : {};
-  } catch { _dbCache = {}; }
-  return _dbCache;
+    })
+    .then(res => res.ok ? res.json() : {})
+    .catch(() => ({}))
+    .then(data => { _dbCache = data; _dbFetchPromise = null; return _dbCache; });
+  }
+  return _dbFetchPromise;
 }
 
 async function _flushDb() {
-  if (!_dbCache || _dirtyKeys.size === 0) return;
-  // Only send the keys that actually changed
-  const payload = {};
-  for (const k of _dirtyKeys) {
-    if (k in _dbCache) payload[k] = _dbCache[k];
-  }
+  if (_dirtyKeys.size === 0) return;
+  // Bug fix #2: snapshot keys first, only clear them AFTER a successful save.
+  // If the request fails, restore the keys so changes are retried next time.
+  const keysToFlush = new Set(_dirtyKeys);
   _dirtyKeys.clear();
+  const db = _dbCache || {};
+  const payload = {};
+  for (const k of keysToFlush) { if (k in db) payload[k] = db[k]; }
+  if (Object.keys(payload).length === 0) return;
   const needsAdmin = Object.keys(payload).some(k => PROTECTED_KEYS.includes(k));
   try {
-    await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: "POST",
       headers: _getHeaders(needsAdmin),
       body: JSON.stringify(payload)
     });
+    if (!res.ok) throw new Error("HTTP " + res.status);
     _dbCache = null; // clear so next load fetches fresh
-  } catch (e) { console.warn("DB save failed:", e); }
+  } catch (e) {
+    for (const k of keysToFlush) _dirtyKeys.add(k); // restore for retry
+    console.warn("DB save failed (will retry):", e);
+  }
 }
 
 function _scheduleSave() {
@@ -858,10 +868,13 @@ function App(){
       setLoaded(true);
     })();
   },[]);
-  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_series",series);},[series,loaded,isAdmin]);
-  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_chars",chars);},[chars,loaded,isAdmin]);
-  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_eps",eps);},[eps,loaded,isAdmin]);
-  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_settings",settings);},[settings,loaded,isAdmin]);
+  // Save effects: deps intentionally exclude isAdmin — they must only fire when data
+  // actually changes, NOT when admin logs in. Login triggers a fresh reload via the
+  // effect below, which then sets new state and fires these effects with full data.
+  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_series",series);},[series,loaded]);
+  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_chars",chars);},[chars,loaded]);
+  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_eps",eps);},[eps,loaded]);
+  useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_settings",settings);},[settings,loaded]);
   // When admin logs in, reload data from server with full images (token is now set)
   useEffect(()=>{
     if(!isAdmin||!loaded)return;
