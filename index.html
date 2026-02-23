@@ -14,11 +14,28 @@
   <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useCallback } = React;
 
-
-// ═══════════ CHANGE THIS PASSWORD BEFORE DEPLOYING ═══════════════
-const ADMIN_PASS = "analog-admin-2024";
-// ═════════════════════════════════════════════════════════════════
-
+// ── ADMIN LOGIN ───────────────────────────────────────────────────
+function AdminLogin({onLogin,onClose}){
+  const [pw,setPw]=useState(""),[err,setErr]=useState(""),[loading,setLoading]=useState(false);
+  const go=async()=>{
+    setLoading(true);setErr("");
+    try{
+      const res=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw})});
+      const data=await res.json();
+      if(data.ok)onLogin();
+      else{setErr("Incorrect password.");setPw("");}
+    }catch{
+      setErr("Server error. Try again.");
+    }finally{setLoading(false);}
+  };
+  useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
+  return(<div className="overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
+    <h3>ADMIN LOGIN</h3><p>Enter the admin password to enable editing.</p>
+    <input type="password" value={pw} onChange={e=>{setPw(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&!loading&&go()} placeholder="Admin password" autoFocus style={{marginTop:12,marginBottom:6}} disabled={loading}/>
+    {err&&<p style={{color:"var(--red)",fontSize:".68rem",marginBottom:6}}>⚠ {err}</p>}
+    <div className="modal-btns"><button className="btn primary" onClick={go} disabled={loading}>{loading?"Checking…":"Login"}</button><button className="btn ghost" onClick={onClose} disabled={loading}>Cancel</button></div>
+  </div></div>);
+}
 // ── SEED DATA ─────────────────────────────────────────────────────
 const SEED_SERIES = [
   { id:"s1", title:"The Mandela Catalogue", creator:"Alex Kister", year:2021, platform:"YouTube", status:"Ongoing", tags:["Found Footage","Religious Horror","Alternate Beings","Broadcast"], description:"A found footage series set in an alternate version of Atticus County, Illinois, where demonic entities known as 'Alternates' replace humans and invade homes through television broadcasts.", notes:"", sourceUrl:"https://www.youtube.com/@AlexKister", rating:9, episodeCount:"5+", contentWarnings:["Disturbing Imagery","Flashing Lights","Religious Themes"], relatedSeries:[], customFields:[], images:[] },
