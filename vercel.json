@@ -3,6 +3,10 @@
     "api/data.js": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/auth.js": {
+      "memory": 128,
+      "maxDuration": 5
     }
   }
 }
