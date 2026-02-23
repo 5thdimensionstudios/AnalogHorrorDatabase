@@ -22,7 +22,7 @@ function AdminLogin({onLogin,onClose}){
     try{
       const res=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw})});
       const data=await res.json();
-      if(data.ok)onLogin();
+      if(data.ok)onLogin(pw); // pass pw so _adminToken can be set
       else{setErr("Incorrect password.");setPw("");}
     }catch{
       setErr("Server error. Try again.");
@@ -82,31 +82,50 @@ function moderate(raw) {
 }
 
 // ── STORAGE ───────────────────────────────────────────────────────
-// Single fetch on load, in-memory cache, debounced saves.
-// Cache is cleared after every save so reloads always get fresh data.
+// In-memory cache with dirty-key tracking.
+// Only modified keys are sent on save — prevents overwriting data with stripped versions.
+// Admin token is sent as a header for protected key writes and full-image GETs.
 const API_URL = "/api/data";
+const PROTECTED_KEYS = ["ahw_series","ahw_chars","ahw_eps","ahw_settings"];
 let _dbCache = null;
+let _dirtyKeys = new Set();
 let _dbSaveTimer = null;
+let _adminToken = null; // set on login, cleared on logout
 
-async function _loadDb() {
+function _getHeaders(includeAdmin) {
+  const h = { "Content-Type": "application/json" };
+  if (includeAdmin && _adminToken) h["X-Admin-Token"] = _adminToken;
+  return h;
+}
+
+async function _loadDb(asAdmin) {
   if (_dbCache !== null) return _dbCache;
   try {
-    const res = await fetch(API_URL, { cache: "no-store" });
+    const res = await fetch(API_URL, {
+      cache: "no-store",
+      headers: asAdmin && _adminToken ? { "X-Admin-Token": _adminToken } : {}
+    });
     _dbCache = res.ok ? await res.json() : {};
   } catch { _dbCache = {}; }
   return _dbCache;
 }
 
 async function _flushDb() {
-  if (!_dbCache) return;
+  if (!_dbCache || _dirtyKeys.size === 0) return;
+  // Only send the keys that actually changed
+  const payload = {};
+  for (const k of _dirtyKeys) {
+    if (k in _dbCache) payload[k] = _dbCache[k];
+  }
+  _dirtyKeys.clear();
+  const needsAdmin = Object.keys(payload).some(k => PROTECTED_KEYS.includes(k));
   try {
     await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(_dbCache)
+      headers: _getHeaders(needsAdmin),
+      body: JSON.stringify(payload)
     });
-    // Clear cache after save so next load fetches fresh from GitHub
-    _dbCache = null;
+    _dbCache = null; // clear so next load fetches fresh
   } catch (e) { console.warn("DB save failed:", e); }
 }
 
@@ -123,11 +142,13 @@ async function sGet(k) {
 async function sSet(k, v) {
   const db = await _loadDb();
   db[k] = v;
+  _dirtyKeys.add(k);
   _scheduleSave();
 }
 
 async function sGetAll(keys) {
-  const db = await _loadDb();
+  // Admin load gets full images; public load gets stripped version
+  const db = await _loadDb(!!_adminToken);
   return keys.map(k => (db && k in db) ? db[k] : null);
 }
 
@@ -832,7 +853,8 @@ function App(){
       cidRef.current=Math.max(...charsData.map(c=>parseInt(c.id.replace(/\D/g,""))||0),199)+1;
       eidRef.current=Math.max(...epsData.map(e=>parseInt(e.id.replace(/\D/g,""))||0),299)+1;
       if(st)setSettings(p=>({...p,...st}));
-      if(ssGet("ahw_isAdmin")===true)setIsAdmin(true);
+      // Note: we do NOT auto-restore admin from sessionStorage anymore.
+      // Admin must log in fresh each session — the password is never stored.
       setLoaded(true);
     })();
   },[]);
@@ -840,6 +862,22 @@ function App(){
   useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_chars",chars);},[chars,loaded,isAdmin]);
   useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_eps",eps);},[eps,loaded,isAdmin]);
   useEffect(()=>{if(loaded&&isAdmin)sSet("ahw_settings",settings);},[settings,loaded,isAdmin]);
+  // When admin logs in, reload data from server with full images (token is now set)
+  useEffect(()=>{
+    if(!isAdmin||!loaded)return;
+    (async()=>{
+      _dbCache=null; // force fresh load with admin token
+      const [sv,cv,ev,st]=await sGetAll(["ahw_series","ahw_chars","ahw_eps","ahw_settings"]);
+      if(sv!==null)setSeries(sv);
+      if(cv!==null)setChars(cv);
+      if(ev!==null)setEps(ev);
+      if(st)setSettings(p=>({...p,...st}));
+      sidRef.current=Math.max(...(sv||series).map(s=>parseInt(s.id.replace(/\D/g,""))||0),99)+1;
+      cidRef.current=Math.max(...(cv||chars).map(c=>parseInt(c.id.replace(/\D/g,""))||0),199)+1;
+      eidRef.current=Math.max(...(ev||eps).map(e=>parseInt(e.id.replace(/\D/g,""))||0),299)+1;
+      addToast("Full data loaded.","info");
+    })();
+  },[isAdmin]);
   useEffect(()=>{window.scrollTo({top:0,behavior:"smooth"});},[nav]);
   useEffect(()=>{
     const h=(e)=>{
@@ -856,8 +894,8 @@ function App(){
   },[nav,showLogin,showSettings,confirmDel,series,chars,eps]);
 
   const goHome=()=>{setSection("series");setNav({page:"series-list"});setSSearch("");setSTag("");setSStat("");};
-  const adminLogin=()=>{setIsAdmin(true);ssSet("ahw_isAdmin",true);setShowLogin(false);addToast("Admin mode enabled.","success");};
-  const adminLogout=()=>{setIsAdmin(false);ssSet("ahw_isAdmin",false);addToast("Logged out.","info");};
+  const adminLogin=(pw)=>{_adminToken=pw;_dbCache=null;_dirtyKeys.clear();setIsAdmin(true);setShowLogin(false);addToast("Admin mode enabled.","success");};
+  const adminLogout=()=>{_adminToken=null;_dbCache=null;_dirtyKeys.clear();setIsAdmin(false);addToast("Logged out.","info");};
 
   const newSer=()=>({id:null,title:"",creator:"",year:new Date().getFullYear(),platform:"YouTube",status:"Unknown",tags:[],description:"",notes:"",sourceUrl:"",rating:null,episodeCount:"",contentWarnings:[],relatedSeries:[],customFields:[],images:[]});
   const newChr=(sid)=>({id:null,seriesId:sid||"",name:"",type:"Character",status:"Unknown",aliases:"",firstAppearance:"",voicedBy:"",summary:"",article:"",image:null,images:[],customFields:[]});
