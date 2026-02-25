@@ -111,7 +111,7 @@ function smartMerge(current, incoming) {
         // Restore images if incoming has none OR has stripped entries (data: undefined)
         const restoredImages =
           curItem.images && curItem.images.length > 0 &&
-          (!inItem.images || inItem.images.length === 0 || hasStrippedImages(inItem.images))
+          hasStrippedImages(inItem.images)
             ? curItem.images
             : inItem.images;
 
