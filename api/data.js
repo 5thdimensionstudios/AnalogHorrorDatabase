@@ -136,28 +136,32 @@ function stripImages(data) {
   if (!data) return data;
   const out = { ...data };
 
+  // For series: keep cover image data (base64 legacy) or url, strip non-cover base64
   if (out.ahw_series) {
     out.ahw_series = out.ahw_series.map(s => ({
       ...s,
       images: (s.images || []).map(img => ({
         ...img,
-        data: img.iscover ? img.data : undefined,
+        // Keep url-based images fully; for legacy base64, only keep cover data
+        data: img.url ? undefined : (img.iscover ? img.data : undefined),
       })),
     }));
   }
 
+  // For chars/eps: strip any legacy base64 blobs; url-based images are kept as-is
   if (out.ahw_chars) {
     out.ahw_chars = out.ahw_chars.map(c => ({
       ...c,
-      image:  null,
-      images: [],
+      // Keep URL portraits (strings starting with http); strip legacy base64 portraits
+      image:  c.image && c.image.startsWith("http") ? c.image : null,
+      images: (c.images || []).map(img => ({ ...img, data: undefined })),
     }));
   }
 
   if (out.ahw_eps) {
     out.ahw_eps = out.ahw_eps.map(e => ({
       ...e,
-      images: [],
+      images: (e.images || []).map(img => ({ ...img, data: undefined })),
     }));
   }
 
