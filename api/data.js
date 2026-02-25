@@ -223,9 +223,11 @@ module.exports = async (req, res) => {
 
     try {
       const current = await readDb();
-      const merged  = smartMerge(current, incoming);
+      // purge=1 bypasses smartMerge so the cleanup tool can strip base64 blobs
+      const purge = req.query && req.query.purge === '1';
+      const merged = purge ? { ...current, ...incoming } : smartMerge(current, incoming);
       await writeDb(merged);
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ success: true, purge: !!purge });
     } catch (err) {
       console.error("WRITE ERROR:", err.message);
       return res.status(500).json({ error: err.message });
