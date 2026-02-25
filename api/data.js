@@ -81,7 +81,8 @@ async function writeDb(data) {
  */
 function hasStrippedImages(images) {
   if (!images || images.length === 0) return false;
-  return images.some(img => !img.data);
+  // An image is NOT stripped if it has a url (new storage-based image) or has data (legacy base64)
+  return images.some(img => !img.data && !img.url);
 }
 
 function smartMerge(current, incoming) {
@@ -114,9 +115,10 @@ function smartMerge(current, incoming) {
             ? curItem.images
             : inItem.images;
 
-        // Restore single image field if it was nulled out during strip
+        // Restore single image field only if it was nulled AND no new URL was set
         const restoredImage =
-          (inItem.image === null || inItem.image === undefined) && curItem.image
+          (inItem.image === null || inItem.image === undefined) &&
+          curItem.image && curItem.image.startsWith('http')
             ? curItem.image
             : inItem.image;
 
