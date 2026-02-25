@@ -7,6 +7,10 @@
     "api/auth.js": {
       "memory": 128,
       "maxDuration": 5
+    },
+    "api/config.js": {
+      "memory": 128,
+      "maxDuration": 5
     }
   }
 }
