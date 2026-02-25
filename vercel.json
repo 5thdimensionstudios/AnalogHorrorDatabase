@@ -7,10 +7,6 @@
     "api/auth.js": {
       "memory": 128,
       "maxDuration": 5
-    },
-    "api/upload.js": {
-      "memory": 256,
-      "maxDuration": 15
     }
   }
 }
