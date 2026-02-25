@@ -219,10 +219,10 @@ function renderArticle(text, images) {
     const centers= floats.filter(f=>f.pos==="center");
     return (
       <div key={pi} className="article-block">
-        {lefts.map((f,i)=>f.img?<div key={"l"+i} className="wiki-img wiki-img-left"><img src={f.img.data} alt={f.cap}/>{f.cap&&<div className="wiki-img-cap">{f.cap}</div>}</div>:null)}
-        {rights.map((f,i)=>f.img?<div key={"r"+i} className="wiki-img wiki-img-right"><img src={f.img.data} alt={f.cap}/>{f.cap&&<div className="wiki-img-cap">{f.cap}</div>}</div>:null)}
+        {lefts.map((f,i)=>f.img?<div key={"l"+i} className="wiki-img wiki-img-left"><img src={imgSrc(f.img)} alt={f.cap}/>{f.cap&&<div className="wiki-img-cap">{f.cap}</div>}</div>:null)}
+        {rights.map((f,i)=>f.img?<div key={"r"+i} className="wiki-img wiki-img-right"><img src={imgSrc(f.img)} alt={f.cap}/>{f.cap&&<div className="wiki-img-cap">{f.cap}</div>}</div>:null)}
         {clean&&<p className="article-p" style={{overflow:"hidden"}}>{clean}</p>}
-        {centers.map((f,i)=>f.img?<div key={"c"+i} className="wiki-img wiki-img-center"><img src={f.img.data} alt={f.cap}/>{f.cap&&<div className="wiki-img-cap">{f.cap}</div>}</div>:null)}
+        {centers.map((f,i)=>f.img?<div key={"c"+i} className="wiki-img wiki-img-center"><img src={imgSrc(f.img)} alt={f.cap}/>{f.cap&&<div className="wiki-img-cap">{f.cap}</div>}</div>:null)}
         <div style={{clear:"both"}}/>
       </div>
     );
@@ -290,7 +290,7 @@ function ArticleEditor({value, onChange, images, placeholder}) {
                 className={"ae-thumb"+(selImg&&selImg.id===img.id?" sel":"")}
                 onClick={()=>pickImg(img)}
                 title={img.name||"Image"}>
-                <img src={img.data} alt=""/>
+                <img src={imgSrc(img)} alt=""/>
                 {img.iscover && <span className="ae-star">★</span>}
               </div>
             ))}
@@ -298,7 +298,7 @@ function ArticleEditor({value, onChange, images, placeholder}) {
 
           {selImg && (
             <div className="ae-cfg">
-              <img src={selImg.data} className="ae-cfg-prev" alt=""/>
+              <img src={imgSrc(selImg)} className="ae-cfg-prev" alt=""/>
               <div className="ae-cfg-right">
                 <div className="fg" style={{marginBottom:8}}>
                   <label>Float Position</label>
@@ -398,56 +398,60 @@ function SettingsPanel({s,onChange,onClose}){
   </div></div>);
 }
 
+// ── SUPABASE STORAGE UPLOAD ───────────────────────────────────────
+let _config = null;
+async function getConfig() {
+  if (_config) return _config;
+  const res = await fetch("/api/config");
+  _config = await res.json();
+  return _config;
+}
+
+async function uploadToStorage(file) {
+  const config = await getConfig();
+  if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error("Storage not configured. Add SUPABASE_ANON_KEY to Vercel env vars.");
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = Date.now() + "-" + Math.random().toString(36).slice(2) + "." + ext;
+  const res = await fetch(`${config.supabaseUrl}/storage/v1/object/images/${path}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${config.supabaseAnonKey}`,
+      "Content-Type": file.type,
+      "x-upsert": "true",
+    },
+    body: file,
+  });
+  if (!res.ok) { const err = await res.text(); throw new Error(err); }
+  return `${config.supabaseUrl}/storage/v1/object/public/images/${path}`;
+}
+
+// Works with both old base64 images (img.data) and new URL images (img.url)
+const imgSrc = img => img ? (img.url || img.data || "") : "";
+
 // ── IMAGE UPLOADER ────────────────────────────────────────────────
 function ImgUploader({images,onChange}){
   const ref=useRef(null);
   const [uploading,setUploading]=useState(false);
-  const [uploadErr,setUploadErr]=useState(null);
-
-  const uploadToStorage=async(file)=>{
-    return new Promise((resolve,reject)=>{
-      const r=new FileReader();
-      r.onload=async(e)=>{
-        try{
-          const adminToken=_adminToken||"";
-          const res=await fetch("/api/upload",{
-            method:"POST",
-            headers:{"Content-Type":"application/json","X-Admin-Token":adminToken},
-            body:JSON.stringify({data:e.target.result,name:file.name,type:file.type})
-          });
-          const json=await res.json();
-          if(!res.ok||!json.url)throw new Error(json.error||"Upload failed");
-          resolve(json.url);
-        }catch(err){reject(err);}
-      };
-      r.onerror=()=>reject(new Error("File read failed"));
-      r.readAsDataURL(file);
-    });
-  };
-
   const add=async(files)=>{
-    setUploadErr(null);
     setUploading(true);
-    const arr=Array.from(files).filter(f=>f.type.startsWith("image/"));
-    const newImgs=[...images];
-    for(const f of arr){
-      if(newImgs.length>=8)break;
-      try{
-        const url=await uploadToStorage(f);
-        newImgs.push({id:"img"+Date.now()+Math.floor(Math.random()*1000),name:f.name,data:url,iscover:newImgs.length===0});
-      }catch(err){setUploadErr("Upload failed: "+err.message);break;}
-    }
-    setUploading(false);
-    onChange(newImgs);
+    try{
+      const newImgs=await Promise.all(
+        Array.from(files).filter(f=>f.type.startsWith("image/")).map(async(f,i)=>{
+          const url=await uploadToStorage(f);
+          return {id:"img"+Date.now()+Math.floor(Math.random()*1000),name:f.name,url,iscover:images.length===0&&i===0};
+        })
+      );
+      onChange([...images,...newImgs]);
+    }catch(e){alert("Upload failed: "+e.message);}
+    finally{setUploading(false);}
   };
-
   const remove=(id)=>{const f=images.filter(i=>i.id!==id);if(f.length&&!f.some(i=>i.iscover))f[0].iscover=true;onChange(f);};
   const setCov=(id)=>onChange(images.map(i=>({...i,iscover:i.id===id})));
   return(<div>
     <div className="img-grid">
       {images.map(img=>(
         <div key={img.id} className={"img-item"+(img.iscover?" cover":"")}>
-          <img src={img.data} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.8}}/>
+          <img src={imgSrc(img)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.8}}/>
           <div className="img-ov">
             <button className="img-btn" onClick={()=>setCov(img.id)}>{img.iscover?"★ Cover":"☆ Set Cover"}</button>
             <button className="img-btn del" onClick={()=>remove(img.id)}>✕ Remove</button>
@@ -455,12 +459,12 @@ function ImgUploader({images,onChange}){
           {img.iscover&&<div className="cover-lbl">COVER</div>}
         </div>
       ))}
-      {images.length<8&&<div className="img-add" onClick={()=>!uploading&&ref.current&&ref.current.click()} style={{opacity:uploading?.5:1,cursor:uploading?"not-allowed":"pointer"}}>
-        {uploading?<span style={{fontSize:".7rem",color:"#888"}}>Uploading…</span>:<><span style={{fontSize:"2rem",opacity:.2}}>+</span><span style={{fontSize:".6rem",color:"#555"}}>Upload Image</span></>}
-        <input ref={ref} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>add(e.target.files)}/>
+      {images.length<8&&<div className="img-add" onClick={()=>!uploading&&ref.current&&ref.current.click()}>
+        <span style={{fontSize:"2rem",opacity:.2}}>{uploading?"⟳":"+"}</span>
+        <span style={{fontSize:".6rem",color:"#555"}}>{uploading?"Uploading…":"Upload Image"}</span>
+        <input ref={ref} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>add(e.target.files)} disabled={uploading}/>
       </div>}
     </div>
-    {uploadErr&&<p style={{color:"#e55",fontSize:".7rem",marginTop:5}}>{uploadErr}</p>}
     {images.length>0&&<p className="hint" style={{marginTop:7}}>★ = cover · max 8 images · hover to manage</p>}
   </div>);
 }
@@ -659,7 +663,7 @@ function EpisodeDetail({ep,allSeries,allChars,isAdmin,onEdit,onDelete,onBack,onC
     </div>
     <div className="detail-layout">
       <div className="detail-main">
-        {cover&&<div className="detail-banner" onClick={()=>setLb(cover.data)}><img src={cover.data} alt={ep.title} className="banner-img"/><div className="banner-hint">🔍 Click to enlarge</div></div>}
+        {cover&&<div className="detail-banner" onClick={()=>setLb(imgSrc(cover))}><img src={imgSrc(cover)} alt={ep.title} className="banner-img"/><div className="banner-hint">🔍 Click to enlarge</div></div>}
         <div className="detail-hd">
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
             {ep.episodeNumber&&<span style={{fontFamily:"var(--ffb)",fontSize:".62rem",color:"var(--a)",border:"1px solid var(--a)",padding:"2px 7px",letterSpacing:"1px"}}>EP {ep.episodeNumber}</span>}
@@ -679,7 +683,7 @@ function EpisodeDetail({ep,allSeries,allChars,isAdmin,onEdit,onDelete,onBack,onC
           <div className="char-cards">{castChars.map(ch=><div key={ch.id} className="char-card" onClick={()=>onCharClick(ch.id)}>{ch.image?<img src={ch.image} alt={ch.name} className="char-card-img"/>:<div className="char-card-ph">?</div>}<div className="char-card-info"><div className="char-card-name">{ch.name}</div><div className="char-card-badges">{ch.type&&<span className="badge">{ch.type}</span>}{ch.status&&<span className="badge" style={{borderColor:C_CLR[ch.status]||"#888",color:C_CLR[ch.status]||"#888"}}>{ch.status}</span>}</div>{ch.summary&&<p className="char-card-sum">{ch.summary}</p>}</div><span className="char-card-arr">→</span></div>)}</div>
         </div>}
         {ep.castNotes&&<div className="wiki-sec"><h2 className="wiki-h2">Cast Notes</h2><p style={{fontSize:".78rem",color:"var(--td)"}}>{ep.castNotes}</p></div>}
-        {ep.images&&ep.images.length>1&&<div className="wiki-sec"><h2 className="wiki-h2">Gallery</h2><div className="gallery-grid">{ep.images.map(img=><div key={img.id} className="gallery-thumb" onClick={()=>setLb(img.data)}><img src={img.data} alt=""/>{img.iscover&&<span className="cover-lbl">COVER</span>}</div>)}</div></div>}
+        {ep.images&&ep.images.length>1&&<div className="wiki-sec"><h2 className="wiki-h2">Gallery</h2><div className="gallery-grid">{ep.images.map(img=><div key={img.id} className="gallery-thumb" onClick={()=>setLb(imgSrc(img))}><img src={imgSrc(img)} alt=""/>{img.iscover&&<span className="cover-lbl">COVER</span>}</div>)}</div></div>}
         <div className="detail-acts">
           {isAdmin&&<button className="btn primary" onClick={onEdit}>✎ Edit</button>}
           {isAdmin&&<button className="btn danger" onClick={onDelete}>Delete</button>}
@@ -689,7 +693,7 @@ function EpisodeDetail({ep,allSeries,allChars,isAdmin,onEdit,onDelete,onBack,onC
       </div>
       <aside className="infobox">
         <div className="ib-title">{ep.title}</div>
-        {cover?<img src={cover.data} alt="" className="ib-cover" onClick={()=>setLb(cover.data)}/>:<div className="ib-no-img">📼</div>}
+        {cover?<img src={imgSrc(cover)} alt="" className="ib-cover" onClick={()=>setLb(imgSrc(cover))}/>:<div className="ib-no-img">📼</div>}
         <div className="ib-body">
           {ep.episodeNumber&&<div className="ib-row"><span className="ib-k">Episode</span><span className="ib-v">#{ep.episodeNumber}</span></div>}
           {ser&&<div className="ib-row"><span className="ib-k">Series</span><span className="ib-v">{ser.title}</span></div>}
@@ -714,7 +718,7 @@ function SeriesDetail({series,chars,eps,isAdmin,onEdit,onDelete,onBack,onTagClic
     <div className="crumb"><span onClick={onBack} className="bc">Archive</span><span className="bcs">›</span><span>{series.title}</span></div>
     <div className="detail-layout">
       <div className="detail-main">
-        {cover&&<div className="detail-banner" onClick={()=>setLb(cover.data)}><img src={cover.data} alt={series.title} className="banner-img"/><div className="banner-hint">🔍 Click to enlarge</div></div>}
+        {cover&&<div className="detail-banner" onClick={()=>setLb(imgSrc(cover))}><img src={imgSrc(cover)} alt={series.title} className="banner-img"/><div className="banner-hint">🔍 Click to enlarge</div></div>}
         <div className="detail-hd">
           <h1 className="detail-ttl">{series.title}</h1>
           <div className="detail-meta">
@@ -734,7 +738,7 @@ function SeriesDetail({series,chars,eps,isAdmin,onEdit,onDelete,onBack,onTagClic
           {sc.length===0?<p className="empty-inline">{isAdmin?"No characters yet.":"No characters documented yet."}</p>
           :<div className="char-cards">{sc.map(ch=><div key={ch.id} className="char-card" onClick={()=>onCharClick(ch.id)}>{ch.image?<img src={ch.image} alt={ch.name} className="char-card-img"/>:<div className="char-card-ph">?</div>}<div className="char-card-info"><div className="char-card-name">{ch.name}</div><div className="char-card-badges">{ch.type&&<span className="badge">{ch.type}</span>}{ch.status&&<span className="badge" style={{borderColor:C_CLR[ch.status]||"#888",color:C_CLR[ch.status]||"#888"}}>{ch.status}</span>}</div>{ch.summary&&<p className="char-card-sum">{ch.summary}</p>}</div><span className="char-card-arr">→</span></div>)}</div>}
         </div>
-        {series.images&&series.images.length>1&&<div className="wiki-sec"><h2 className="wiki-h2">Gallery</h2><div className="gallery-grid">{series.images.map(img=><div key={img.id} className="gallery-thumb" onClick={()=>setLb(img.data)}><img src={img.data} alt=""/>{img.iscover&&<span className="cover-lbl">COVER</span>}</div>)}</div></div>}
+        {series.images&&series.images.length>1&&<div className="wiki-sec"><h2 className="wiki-h2">Gallery</h2><div className="gallery-grid">{series.images.map(img=><div key={img.id} className="gallery-thumb" onClick={()=>setLb(imgSrc(img))}><img src={imgSrc(img)} alt=""/>{img.iscover&&<span className="cover-lbl">COVER</span>}</div>)}</div></div>}
         <div className="wiki-sec">
           <div className="wiki-sec-hd"><h2 className="wiki-h2">Episodes{se.length>0?" ("+se.length+")":""}</h2>{isAdmin&&<button className="btn primary sm" onClick={()=>onAddEp(series.id)}>+ Add Episode</button>}</div>
           {se.length===0?<p className="empty-inline">{isAdmin?"No episodes added yet. Click + Add Episode to get started.":"No episodes documented yet."}</p>
@@ -755,7 +759,7 @@ function SeriesDetail({series,chars,eps,isAdmin,onEdit,onDelete,onBack,onTagClic
       </div>
       <aside className="infobox">
         <div className="ib-title">{series.title}</div>
-        {cover?<img src={cover.data} alt="" className="ib-cover" onClick={()=>setLb(cover.data)}/>:<div className="ib-no-img">📺</div>}
+        {cover?<img src={imgSrc(cover)} alt="" className="ib-cover" onClick={()=>setLb(imgSrc(cover))}/>:<div className="ib-no-img">📺</div>}
         <div className="ib-body">
           <div className="ib-row"><span className="ib-k">Creator</span><span className="ib-v">{series.creator}</span></div>
           <div className="ib-row"><span className="ib-k">Year</span><span className="ib-v">{series.year}</span></div>
@@ -779,7 +783,7 @@ function CharForm({char,allSeries,onSave,onCancel,isNew,toast}){
   useUnsaved(dirty);
   const u=(k,v)=>{setD(p=>({...p,[k]:v}));setDirty(true);};
   const imgRef=useRef(null);
-  const handleImg=async(f)=>{if(!f||!f.type.startsWith("image/"))return;const r=new FileReader();r.onload=async(e)=>{try{const adminToken=_adminToken||"";const res=await fetch("/api/upload",{method:"POST",headers:{"Content-Type":"application/json","X-Admin-Token":adminToken},body:JSON.stringify({data:e.target.result,name:f.name,type:f.type})});const json=await res.json();if(!res.ok||!json.url)throw new Error(json.error||"Upload failed");u("image",json.url);}catch(err){alert("Portrait upload failed: "+err.message);}};r.readAsDataURL(f);};
+  const handleImg=async f=>{if(!f||!f.type.startsWith("image/"))return;try{const url=await uploadToStorage(f);u("image",url);}catch(e){alert("Upload failed: "+e.message);}};
   const ser=allSeries.find(s=>s.id===d.seriesId);
   const save=()=>{if(d.name){onSave(d);setDirty(false);}};
   const ART_PLACEHOLDER="Write the full article here...\n\n== Appearance ==\nDescribe what this character looks like.\n\n== Role in the Series ==\nWhy do they matter?\n\n== Lore & Theories ==\nFan theories, unanswered questions.\n\n== Notable Appearances ==\nKey episodes or tapes.";
@@ -1245,7 +1249,7 @@ function App(){
             const cover=s.images&&(s.images.find(i=>i.iscover)||s.images[0]);
             const sc2=chars.filter(c=>c.seriesId===s.id).length;
             return(<div key={s.id} className="s-card" onClick={()=>setNav({page:"series-detail",id:s.id})}>
-              {cover&&<img src={cover.data} alt="" className="s-card-cover"/>}
+              {cover&&<img src={imgSrc(cover)} alt="" className="s-card-cover"/>}
               <div className="s-card-body">
                 <div className="s-card-title">{s.title}</div>
                 <div className="s-card-meta"><span style={{color:S_CLR[s.status]||"#888"}}><span className="dot" style={{background:S_CLR[s.status]||"#888"}}/>{s.status}</span><span>{s.creator}</span><span>{s.year}</span>{sc2>0&&<span style={{color:"var(--a)"}}>{sc2} char{sc2!==1?"s":""}</span>}</div>
