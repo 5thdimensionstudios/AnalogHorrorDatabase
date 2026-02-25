@@ -188,7 +188,7 @@ module.exports = async (req, res) => {
       const adminToken = req.headers["x-admin-token"];
       const isAdmin    = adminToken && adminToken === ADMIN_PASS;
       const data       = await readDb();
-      return res.status(200).json(isAdmin ? data : stripImages(data));
+      return res.status(200).json(data);
     } catch (err) {
       console.error("READ ERROR:", err.message);
       return res.status(500).json({ error: err.message });
